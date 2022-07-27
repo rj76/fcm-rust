@@ -49,6 +49,9 @@ pub struct MessageBody<'a> {
 
     #[serde(skip_serializing_if = "Option::is_none")]
     to: Option<&'a str>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    mutable_content: Option<bool>,
 }
 
 /// Represents a FCM message. Construct the FCM message
@@ -93,6 +96,7 @@ pub struct MessageBuilder<'a> {
     restricted_package_name: Option<&'a str>,
     time_to_live: Option<i32>,
     to: Option<&'a str>,
+    mutable_content: Option<bool>,
 }
 
 impl<'a> MessageBuilder<'a> {
@@ -111,6 +115,7 @@ impl<'a> MessageBuilder<'a> {
             dry_run: None,
             data: None,
             notification: None,
+            mutable_content: None,
         }
     }
 
@@ -134,6 +139,7 @@ impl<'a> MessageBuilder<'a> {
             dry_run: None,
             data: None,
             notification: None,
+            mutable_content: None,
         }
     }
 
@@ -239,6 +245,12 @@ impl<'a> MessageBuilder<'a> {
         self
     }
 
+    /// To set the `mutable_content` field on iOS
+    pub fn mutable_content(&mut self, mutable_content: bool) -> &mut Self {
+        self.mutable_content = Some(mutable_content);
+        self
+    }
+
     /// Complete the build and get a `Message` instance
     pub fn finalize(self) -> Message<'a> {
         Message {
@@ -255,6 +267,7 @@ impl<'a> MessageBuilder<'a> {
                 dry_run: self.dry_run,
                 data: self.data.clone(),
                 notification: self.notification,
+                mutable_content: self.mutable_content,
             },
         }
     }

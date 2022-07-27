@@ -140,6 +140,19 @@ fn should_set_content_available() {
 }
 
 #[test]
+fn should_set_mutable_content() {
+    let msg = MessageBuilder::new("api_key", "token").finalize();
+
+    assert_eq!(msg.body.mutable_content, None);
+
+    let mut builder = MessageBuilder::new("api_key", "token");
+    builder.mutable_content(true);
+    let msg = builder.finalize();
+
+    assert_eq!(msg.body.mutable_content, Some(true));
+}
+
+#[test]
 fn should_set_delay_while_idle() {
     let msg = MessageBuilder::new("api_key", "token").finalize();
 

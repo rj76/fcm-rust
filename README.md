@@ -8,9 +8,14 @@
 [travis]: https://travis-ci.org/panicbit/fcm-rust
 [coveralls]: https://coveralls.io/github/panicbit/fcm-rust
 
-## Examples
+## v1 API
 
 This fork is a rewrite to use Google's HTTP v1 API.
+
+# Credentials
+
+This library expects the Google credentials JSON location to be 
+defined as `GOOGLE_APPLICATION_CREDENTIALS` in the `.env` file.
 
 ## Examples
 

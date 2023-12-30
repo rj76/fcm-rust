@@ -1,5 +1,5 @@
 use argparse::{ArgumentParser, Store};
-use fcm::{Client, MessageBuilder};
+use fcm::{Client, MessageBuilder, Target};
 use serde::Serialize;
 
 #[derive(Serialize)]
@@ -27,7 +27,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let client = Client::new();
     let data = CustomData { message: "howdy" };
 
-    let mut builder = MessageBuilder::new(&api_key, &device_token);
+    let mut builder = MessageBuilder::new(Target::Token(device_token));
     builder.data(&data)?;
 
     let response = client.send(builder.finalize()).await?;

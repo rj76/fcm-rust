@@ -12,12 +12,13 @@
 //! # use std::collections::HashMap;
 //! # #[tokio::main]
 //! # async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+//! use fcm::Target;
 //! let client = fcm::Client::new();
 //!
 //! let mut map = HashMap::new();
 //! map.insert("message", "Howdy!");
 //!
-//! let mut builder = fcm::MessageBuilder::new("<FCM API Key>", "<registration id>");
+//! let mut builder = fcm::MessageBuilder::new(Target::Token("token".to_string()));
 //! builder.data(&map);
 //!
 //! let response = client.send(builder.finalize()).await?;
@@ -31,8 +32,8 @@
 //! ```rust
 //! # fn main() {
 //! let mut builder = fcm::NotificationBuilder::new();
-//! builder.title("Hey!");
-//! builder.body("Do you want to catch up later?");
+//! builder.title("Hey!".to_string());
+//! builder.body("Do you want to catch up later?".to_string());
 //! let notification = builder.finalize();
 //! # }
 //! ```
@@ -42,14 +43,15 @@
 //! ```no_run
 //! # #[tokio::main]
 //! # async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+//! use fcm::Target;
 //! let client = fcm::Client::new();
 //!
 //! let mut notification_builder = fcm::NotificationBuilder::new();
-//! notification_builder.title("Hey!");
-//! notification_builder.body("Do you want to catch up later?");
+//! notification_builder.title("Hey!".to_string());
+//! notification_builder.body("Do you want to catch up later?".to_string());
 //!
 //! let notification = notification_builder.finalize();
-//! let mut message_builder = fcm::MessageBuilder::new("<FCM API Key>", "<registration id>");
+//! let mut message_builder = fcm::MessageBuilder::new(Target::Token("token".to_string()));
 //! message_builder.notification(notification);
 //!
 //! let response = client.send(message_builder.finalize()).await?;
@@ -63,6 +65,10 @@ pub use crate::message::*;
 mod notification;
 pub use crate::notification::*;
 mod client;
+mod android;
+mod web;
+mod apns;
+
 pub use crate::client::*;
 
 pub use crate::client::response::FcmError as Error;

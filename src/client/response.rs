@@ -144,6 +144,11 @@ pub enum FcmError {
     ///
     /// Senders that cause problems risk being blacklisted.
     ServerError(Option<RetryAfter>),
+
+    ProjectIdError(String),
+
+    AuthToken(String),
+
 }
 
 impl Error for FcmError {}
@@ -154,6 +159,8 @@ impl fmt::Display for FcmError {
             FcmError::Unauthorized => write!(f, "authorization header missing or with invalid syntax in HTTP request"),
             FcmError::InvalidMessage(ref s) => write!(f, "invalid message {}", s),
             FcmError::ServerError(_) => write!(f, "the server couldn't process the request"),
+            FcmError::ProjectIdError(error) => write!(f, "error getting project_id: {error}"),
+            FcmError::AuthToken(error) => write!(f, "error getting auth token: {error}"),
         }
     }
 }

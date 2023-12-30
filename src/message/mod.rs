@@ -1,73 +1,82 @@
-use std::borrow::Cow;
-
-use serde::Serialize;
+use serde::{Serialize, Serializer};
 use serde_json::Value;
-
-use crate::notification::Notification;
+use crate::android::AndroidConfig;
+use crate::apns::ApnsConfig;
+use crate::Notification;
+use crate::web::WebpushConfig;
 
 #[cfg(test)]
 mod tests;
 
-#[derive(Serialize, PartialEq, Debug)]
+#[derive(Clone, Serialize, Debug, PartialEq)]
 #[serde(rename_all = "lowercase")]
-pub enum Priority {
-    Normal,
-    High,
+pub enum Target {
+    Token(String),
+    Topic(String),
+    Condition(String)
 }
 
-#[derive(Serialize, Debug, PartialEq)]
-pub struct MessageBody<'a> {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    collapse_key: Option<&'a str>,
+fn output_target<S>(target: &Target, s: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer
+{
+    match target {
+        Target::Token(token) => {
+            s.serialize_newtype_struct("token", token.as_str())
+            // serializer.
+            // let ser = s.serialize_str(token.as_str())?;
+            // s.serialize_field("token", ser)?
+        },
+        Target::Topic(topic) => {
+            s.serialize_newtype_struct("topic", topic.as_str())
+            // let ser = s.serialize_str(topic.as_str())?;
+            // s.serialize_field("topic", ser)?
+        },
+        Target::Condition(condition) => {
+            s.serialize_newtype_struct("condition", condition.as_str())
+            // let ser = s.serialize_str(condition.as_str())?;
+            // s.serialize_field("condition", ser)?
+        },
+    }
+}
 
-    #[serde(skip_serializing_if = "Option::is_none")]
-    content_available: Option<bool>,
-
+#[derive(Serialize, Debug)]
+// https://firebase.google.com/docs/reference/fcm/rest/v1/projects.messages?authuser=0#resource:-message
+pub struct Message {
+    // Arbitrary key/value payload, which must be UTF-8 encoded.
     #[serde(skip_serializing_if = "Option::is_none")]
     data: Option<Value>,
 
+    // Basic notification template to use across all platforms.
     #[serde(skip_serializing_if = "Option::is_none")]
-    delay_while_idle: Option<bool>,
+    notification: Option<Notification>,
 
+    // Android specific options for messages sent through FCM connection server.
     #[serde(skip_serializing_if = "Option::is_none")]
-    dry_run: Option<bool>,
+    android: Option<AndroidConfig>,
 
+    // Webpush protocol options.
     #[serde(skip_serializing_if = "Option::is_none")]
-    notification: Option<Notification<'a>>,
+    webpush: Option<WebpushConfig>,
 
+    // Apple Push Notification Service specific options.
     #[serde(skip_serializing_if = "Option::is_none")]
-    priority: Option<Priority>,
+    apns: Option<ApnsConfig>,
 
+    // Template for FCM SDK feature options to use across all platforms.
     #[serde(skip_serializing_if = "Option::is_none")]
-    registration_ids: Option<Vec<Cow<'a, str>>>,
+    fcm_options: Option<FcmOptions>,
 
-    #[serde(skip_serializing_if = "Option::is_none")]
-    restricted_package_name: Option<&'a str>,
-
-    #[serde(skip_serializing_if = "Option::is_none")]
-    time_to_live: Option<i32>,
-
-    #[serde(skip_serializing_if = "Option::is_none")]
-    to: Option<&'a str>,
-
-    #[serde(skip_serializing_if = "Option::is_none")]
-    mutable_content: Option<bool>,
+    // Target to send a message to.
+    #[serde(serialize_with = "output_target")]
+    target: Target
 }
 
-/// Represents a FCM message. Construct the FCM message
-/// using various utility methods and finally send it.
-/// # Examples:
-/// ```rust
-/// use fcm::MessageBuilder;
-///
-/// let mut builder = MessageBuilder::new("<FCM API Key>", "<registration id>");
-/// builder.dry_run(true);
-/// let message = builder.finalize();
-/// ```
-#[derive(Debug)]
-pub struct Message<'a> {
-    pub api_key: &'a str,
-    pub body: MessageBody<'a>,
+#[derive(Serialize, Debug)]
+// https://firebase.google.com/docs/reference/fcm/rest/v1/projects.messages?authuser=0#fcmoptions
+pub struct FcmOptions {
+    // Label associated with the message's analytics data.
+    analytics_label: String,
 }
 
 ///
@@ -76,133 +85,27 @@ pub struct Message<'a> {
 /// # Examples
 ///
 /// ```rust
-/// use fcm::MessageBuilder;
+/// use fcm::{MessageBuilder, NotificationBuilder, Target};
 ///
-/// let mut builder = MessageBuilder::new("<FCM API Key>", "<registration id>");
-/// builder.dry_run(true);
+/// let mut builder = MessageBuilder::new(Target::Token("token".to_string()));
+/// builder.notification(NotificationBuilder::new().finalize());
 /// let message = builder.finalize();
 /// ```
 #[derive(Debug)]
-pub struct MessageBuilder<'a> {
-    api_key: &'a str,
-    collapse_key: Option<&'a str>,
-    content_available: Option<bool>,
+pub struct MessageBuilder {
     data: Option<Value>,
-    delay_while_idle: Option<bool>,
-    dry_run: Option<bool>,
-    notification: Option<Notification<'a>>,
-    priority: Option<Priority>,
-    registration_ids: Option<Vec<Cow<'a, str>>>,
-    restricted_package_name: Option<&'a str>,
-    time_to_live: Option<i32>,
-    to: Option<&'a str>,
-    mutable_content: Option<bool>,
+    notification: Option<Notification>,
+    target: Target
 }
 
-impl<'a> MessageBuilder<'a> {
+impl MessageBuilder {
     /// Get a new instance of Message. You need to supply to.
-    pub fn new(api_key: &'a str, to: &'a str) -> Self {
+    pub fn new(target: Target) -> Self {
         MessageBuilder {
-            api_key,
-            to: Some(to),
-            registration_ids: None,
-            collapse_key: None,
-            priority: None,
-            content_available: None,
-            delay_while_idle: None,
-            time_to_live: None,
-            restricted_package_name: None,
-            dry_run: None,
             data: None,
             notification: None,
-            mutable_content: None,
+            target,
         }
-    }
-
-    /// Get a new instance of Message. You need to supply registration ids.
-    pub fn new_multi<S>(api_key: &'a str, ids: &'a [S]) -> Self
-    where
-        S: Into<Cow<'a, str>> + AsRef<str>,
-    {
-        let converted = ids.iter().map(|a| a.as_ref().into()).collect();
-
-        MessageBuilder {
-            api_key,
-            to: None,
-            registration_ids: Some(converted),
-            collapse_key: None,
-            priority: None,
-            content_available: None,
-            delay_while_idle: None,
-            time_to_live: None,
-            restricted_package_name: None,
-            dry_run: None,
-            data: None,
-            notification: None,
-            mutable_content: None,
-        }
-    }
-
-    /// String value to replace format specifiers in the body string.
-    pub fn registration_ids<S>(&mut self, ids: &'a [S]) -> &mut Self
-    where
-        S: Into<Cow<'a, str>> + AsRef<str>,
-    {
-        let converted = ids.iter().map(|a| a.as_ref().into()).collect();
-
-        self.registration_ids = Some(converted);
-        self
-    }
-
-    /// Set this parameter to identify groups of messages that can be collapsed.
-    pub fn collapse_key(&mut self, collapse_key: &'a str) -> &mut Self {
-        self.collapse_key = Some(collapse_key);
-        self
-    }
-
-    /// Set the priority of the message. You can set Normal or High priorities.
-    /// # Examples:
-    /// ```rust
-    /// use fcm::{MessageBuilder, Priority};
-    ///
-    /// let mut builder = MessageBuilder::new("<FCM API Key>", "<registration id>");
-    /// builder.priority(Priority::High);
-    /// let message = builder.finalize();
-    /// ```
-    pub fn priority(&mut self, priority: Priority) -> &mut Self {
-        self.priority = Some(priority);
-        self
-    }
-
-    /// To set the `content-available` field on iOS
-    pub fn content_available(&mut self, content_available: bool) -> &mut Self {
-        self.content_available = Some(content_available);
-        self
-    }
-
-    /// When set to `true`, sends the message only when the device is active.
-    pub fn delay_while_idle(&mut self, delay_while_idle: bool) -> &mut Self {
-        self.delay_while_idle = Some(delay_while_idle);
-        self
-    }
-
-    /// How long (in seconds) to keep the message on FCM servers in case the device
-    /// is offline. The maximum and default is 4 weeks.
-    pub fn time_to_live(&mut self, time_to_live: i32) -> &mut Self {
-        self.time_to_live = Some(time_to_live);
-        self
-    }
-
-    /// Package name of the application where the registration tokens must match.
-    pub fn restricted_package_name(&mut self, restricted_package_name: &'a str) -> &mut Self {
-        self.restricted_package_name = Some(restricted_package_name);
-        self
-    }
-
-    /// When set to `true`, allows you to test FCM without actually sending the message.
-    pub fn dry_run(&mut self, dry_run: bool) -> &mut Self {
-        self.dry_run = Some(dry_run);
-        self
     }
 
     /// Use this to add custom key-value pairs to the message. This data
@@ -211,14 +114,14 @@ impl<'a> MessageBuilder<'a> {
     ///
     /// # Examples:
     /// ```rust
-    /// use fcm::MessageBuilder;
+    /// use fcm::{MessageBuilder, Target};
     /// use std::collections::HashMap;
     ///
     /// let mut map = HashMap::new();
     /// map.insert("message", "Howdy!");
     ///
-    /// let mut builder = MessageBuilder::new("<FCM API Key>", "<registration id>");
-    /// builder.data(&map);
+    /// let mut builder = MessageBuilder::new(Target::Token("token".to_string()));
+    /// builder.data(&map).expect("Should have been able to add data");
     /// let message = builder.finalize();
     /// ```
     pub fn data(&mut self, data: &dyn erased_serde::Serialize) -> Result<&mut Self, serde_json::Error> {
@@ -229,46 +132,32 @@ impl<'a> MessageBuilder<'a> {
     /// Use this to set a `Notification` for the message.
     /// # Examples:
     /// ```rust
-    /// use fcm::{MessageBuilder, NotificationBuilder};
+    /// use fcm::{MessageBuilder, NotificationBuilder, Target};
     ///
     /// let mut builder = NotificationBuilder::new();
-    /// builder.title("Hey!");
-    /// builder.body("Do you want to catch up later?");
+    /// builder.title("Hey!".to_string());
+    /// builder.body("Do you want to catch up later?".to_string());
     /// let notification = builder.finalize();
     ///
-    /// let mut builder = MessageBuilder::new("<FCM API Key>", "<registration id>");
+    /// let mut builder = MessageBuilder::new(Target::Token("token".to_string()));
     /// builder.notification(notification);
     /// let message = builder.finalize();
     /// ```
-    pub fn notification(&mut self, notification: Notification<'a>) -> &mut Self {
+    pub fn notification(&mut self, notification: Notification) -> &mut Self {
         self.notification = Some(notification);
         self
     }
 
-    /// To set the `mutable_content` field on iOS
-    pub fn mutable_content(&mut self, mutable_content: bool) -> &mut Self {
-        self.mutable_content = Some(mutable_content);
-        self
-    }
-
     /// Complete the build and get a `Message` instance
-    pub fn finalize(self) -> Message<'a> {
+    pub fn finalize(self) -> Message {
         Message {
-            api_key: self.api_key,
-            body: MessageBody {
-                to: self.to,
-                registration_ids: self.registration_ids,
-                collapse_key: self.collapse_key,
-                priority: self.priority,
-                content_available: self.content_available,
-                delay_while_idle: self.delay_while_idle,
-                time_to_live: self.time_to_live,
-                restricted_package_name: self.restricted_package_name,
-                dry_run: self.dry_run,
-                data: self.data.clone(),
-                notification: self.notification,
-                mutable_content: self.mutable_content,
-            },
+            data: self.data,
+            notification: self.notification,
+            android: None,
+            webpush: None,
+            apns: None,
+            fcm_options: None,
+            target: self.target
         }
     }
 }

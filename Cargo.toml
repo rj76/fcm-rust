@@ -1,10 +1,12 @@
 [package]
 name = "fcm"
-version = "0.9.2"
+version = "1.0.0"
 authors = [
   "Suvish Varghese Thoovamalayil <vishy1618@gmail.com>",
   "panicbit <panicbit.dev@gmail.com>",
-  "Julius de Bruijn <pimeys@gmail.com>"]
+  "Julius de Bruijn <pimeys@gmail.com>",
+  "Richard Jansen <demo_epso@proton.me>"
+]
 description = "An API to talk to FCM (Firebase Cloud Messaging) in Rust"
 license = "MIT"
 homepage = "https://github.com/panicbit/fcm-rust"
@@ -21,13 +23,15 @@ vendored-tls = ["reqwest/native-tls-vendored"]
 
 [dependencies]
 serde = { version = "1", features = ["derive"] }
-serde_json = "1"
-erased-serde = "0.3"
+serde_json = { version = "1", features = ["preserve_order"] }
+erased-serde = "0.4.1"
 reqwest = {version = "0.11.0", features = ["json"], default-features=false}
 chrono = "0.4"
 log = "0.4"
+gauth = "0.7.0"
+dotenv = "0.15.0"
 
 [dev-dependencies]
 argparse = "0.2.1"
 tokio = { version = "1.0", features = ["rt-multi-thread", "macros"] }
-pretty_env_logger = "0.3"
+pretty_env_logger = "0.5.0"

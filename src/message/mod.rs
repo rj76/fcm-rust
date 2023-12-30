@@ -23,19 +23,12 @@ fn output_target<S>(target: &Target, s: S) -> Result<S::Ok, S::Error>
     match target {
         Target::Token(token) => {
             s.serialize_newtype_struct("token", token.as_str())
-            // serializer.
-            // let ser = s.serialize_str(token.as_str())?;
-            // s.serialize_field("token", ser)?
         },
         Target::Topic(topic) => {
             s.serialize_newtype_struct("topic", topic.as_str())
-            // let ser = s.serialize_str(topic.as_str())?;
-            // s.serialize_field("topic", ser)?
         },
         Target::Condition(condition) => {
             s.serialize_newtype_struct("condition", condition.as_str())
-            // let ser = s.serialize_str(condition.as_str())?;
-            // s.serialize_field("condition", ser)?
         },
     }
 }

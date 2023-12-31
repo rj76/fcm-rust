@@ -16,6 +16,7 @@ This fork is a rewrite to use Google's HTTP v1 API.
 
 This library expects the Google credentials JSON location to be 
 defined as `GOOGLE_APPLICATION_CREDENTIALS` in the `.env` file.
+Please follow the instructions in the [Firebase Documentation](https://firebase.google.com/docs/cloud-messaging/auth-server#provide-credentials-manually) to create a service account.
 
 ## Examples
 

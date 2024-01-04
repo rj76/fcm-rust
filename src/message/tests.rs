@@ -12,8 +12,7 @@ struct CustomData {
 #[test]
 fn should_create_new_message() {
     let target = Target::Token("token".to_string());
-    let msg = MessageBuilder::new(target.clone())
-        .finalize();
+    let msg = MessageBuilder::new(target.clone()).finalize();
 
     assert_eq!(msg.target, target);
 }
@@ -61,8 +60,7 @@ fn should_be_able_to_render_a_full_message_to_json() {
     let target = Target::Token("token".to_string());
     let mut builder = MessageBuilder::new(target);
 
-    builder
-        .notification(NotificationBuilder::new().finalize());
+    builder.notification(NotificationBuilder::new().finalize());
 
     let payload = serde_json::to_string(&builder.finalize()).unwrap();
 

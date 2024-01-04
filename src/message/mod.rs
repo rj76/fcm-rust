@@ -1,9 +1,9 @@
-use serde::{Serialize, Serializer};
-use serde_json::Value;
 use crate::android::AndroidConfig;
 use crate::apns::ApnsConfig;
-use crate::Notification;
 use crate::web::WebpushConfig;
+use crate::Notification;
+use serde::{Serialize, Serializer};
+use serde_json::Value;
 
 #[cfg(test)]
 mod tests;
@@ -13,23 +13,17 @@ mod tests;
 pub enum Target {
     Token(String),
     Topic(String),
-    Condition(String)
+    Condition(String),
 }
 
 fn output_target<S>(target: &Target, s: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer
+where
+    S: Serializer,
 {
     match target {
-        Target::Token(token) => {
-            s.serialize_newtype_struct("token", token.as_str())
-        },
-        Target::Topic(topic) => {
-            s.serialize_newtype_struct("topic", topic.as_str())
-        },
-        Target::Condition(condition) => {
-            s.serialize_newtype_struct("condition", condition.as_str())
-        },
+        Target::Token(token) => s.serialize_newtype_struct("token", token.as_str()),
+        Target::Topic(topic) => s.serialize_newtype_struct("topic", topic.as_str()),
+        Target::Condition(condition) => s.serialize_newtype_struct("condition", condition.as_str()),
     }
 }
 
@@ -62,7 +56,7 @@ pub struct Message {
 
     // Target to send a message to.
     #[serde(serialize_with = "output_target")]
-    target: Target
+    target: Target,
 }
 
 #[derive(Serialize, Debug)]
@@ -88,7 +82,7 @@ pub struct FcmOptions {
 pub struct MessageBuilder {
     data: Option<Value>,
     notification: Option<Notification>,
-    target: Target
+    target: Target,
 }
 
 impl MessageBuilder {
@@ -150,7 +144,7 @@ impl MessageBuilder {
             webpush: None,
             apns: None,
             fcm_options: None,
-            target: self.target
+            target: self.target,
         }
     }
 }

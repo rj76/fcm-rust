@@ -1,11 +1,10 @@
 pub(crate) mod response;
 
-use gauth::serv_account::ServiceAccount;
-use reqwest::{Body, StatusCode};
-use reqwest::header::RETRY_AFTER;
 use crate::client::response::{ErrorReason, FcmError, FcmResponse, RetryAfter};
 use crate::Message;
-
+use gauth::serv_account::ServiceAccount;
+use reqwest::header::RETRY_AFTER;
+use reqwest::{Body, StatusCode};
 
 /// An async client for sending the notification payload.
 pub struct Client {
@@ -115,10 +114,7 @@ impl Client {
         };
 
         // https://firebase.google.com/docs/reference/fcm/rest/v1/projects.messages/send
-        let url = format!(
-            "https://fcm.googleapis.com/v1/projects/{}/messages:send",
-            project_id
-        );
+        let url = format!("https://fcm.googleapis.com/v1/projects/{}/messages:send", project_id);
 
         let request = self
             .http_client

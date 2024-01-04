@@ -2,7 +2,8 @@ name: Cargo tests
 on:
   push:
     branches:
-      - master
+      - main
+      - develop
   pull_request:
 jobs:
   clippy:
@@ -11,7 +12,7 @@ jobs:
       - uses: actions/checkout@v1
       - uses: actions-rs/toolchain@v1
         with:
-          toolchain: nightly
+          toolchain: stable
           components: clippy
           override: true
       - name: Install dependencies
@@ -50,7 +51,10 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     env:
-      RUSTFLAGS: "-Dwarnings"
+      RUSTFLAGS: "-Dwarnings -Cinstrument-coverage -Zprofile -Ccodegen-units=1 -Copt-level=0 -Clink-dead-code -Coverflow-checks=off -Zpanic_abort_tests -Cpanic=abort"
+      CARGO_INCREMENTAL: "0"
+      RUSTDOCFLAGS: "-Cpanic=abort"
+      RUSTC_BOOTSTRAP: "1"
 
     steps:
       - uses: actions/checkout@v2
@@ -58,6 +62,7 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: ${{matrix.rust}}
+          components: llvm-tools-preview
 
       - uses: actions/cache@v2
         with:
@@ -65,5 +70,21 @@ jobs:
             target
           key: ${{ runner.os }}-cargo-${{ matrix.rust }}
 
+      - name: Build
+        run: cargo build
+
+      - name: Install grcov
+        run: cargo install grcov
+
       - name: Run tests
-        run: cargo test
+        run: LLVM_PROFILE_FILE="fcm-rust-%p-%m.profraw" cargo test
+
+      - name: Collect results
+        run: grcov . -s . --binary-path ./target/debug/ -t lcov --branch --ignore-not-existing -o .
+
+      - name: Coveralls GitHub Action
+        uses: coverallsapp/github-action@v2.2.3
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          file: ./lcov
+

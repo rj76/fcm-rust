@@ -148,7 +148,6 @@ pub enum FcmError {
     ProjectIdError(String),
 
     AuthToken(String),
-
 }
 
 impl Error for FcmError {}

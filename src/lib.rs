@@ -64,10 +64,10 @@ mod message;
 pub use crate::message::*;
 mod notification;
 pub use crate::notification::*;
-mod client;
 mod android;
-mod web;
 mod apns;
+mod client;
+mod web;
 
 pub use crate::client::*;
 

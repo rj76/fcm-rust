@@ -80,11 +80,11 @@ jobs:
         run: LLVM_PROFILE_FILE="fcm-rust-%p-%m.profraw" cargo test
 
       - name: Collect results
-        run: grcov . -s . --binary-path ./target/debug/ -t lcov --branch --ignore-not-existing -o .
+        run: grcov . -s . --binary-path ./target/debug/ -t lcov --branch --ignore-not-existing -o ./tests.lcov
 
       - name: Coveralls GitHub Action
         uses: coverallsapp/github-action@v2.2.3
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          file: ./lcov
+          file: ./tests.lcov
 

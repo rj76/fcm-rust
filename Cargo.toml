@@ -9,8 +9,8 @@ authors = [
 ]
 description = "An API to talk to FCM (Firebase Cloud Messaging) in Rust"
 license = "MIT"
-homepage = "https://github.com/panicbit/fcm-rust"
-repository = "https://github.com/panicbit/fcm-rust"
+homepage = "https://github.com/rj76/fcm-rust"
+repository = "https://github.com/rj76/fcm-rust"
 documentation = "https://docs.rs/fcm/"
 keywords = ["fcm", "firebase", "notification"]
 edition = "2018"

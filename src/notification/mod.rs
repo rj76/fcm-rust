@@ -70,7 +70,7 @@ impl NotificationBuilder {
         Notification {
             title: self.title,
             body: self.body,
-            image: self.image
+            image: self.image,
         }
     }
 }

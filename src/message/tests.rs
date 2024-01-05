@@ -67,7 +67,8 @@ fn should_be_able_to_render_a_full_token_message_to_json() {
     let expected_payload = json!({
         "notification": {},
         "token": "token",
-    }).to_string();
+    })
+    .to_string();
 
     assert_eq!(expected_payload, payload);
 }
@@ -84,7 +85,8 @@ fn should_be_able_to_render_a_full_topic_message_to_json() {
     let expected_payload = json!({
         "notification": {},
         "topic": "my_topic",
-    }).to_string();
+    })
+    .to_string();
 
     assert_eq!(expected_payload, payload);
 }
@@ -101,7 +103,8 @@ fn should_be_able_to_render_a_full_condition_message_to_json() {
     let expected_payload = json!({
         "notification": {},
         "condition": "my_condition",
-    }).to_string();
+    })
+    .to_string();
 
     assert_eq!(expected_payload, payload);
 }

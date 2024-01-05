@@ -2,8 +2,8 @@ use crate::android::AndroidConfig;
 use crate::apns::ApnsConfig;
 use crate::web::WebpushConfig;
 use crate::Notification;
-use serde::{Serialize, Serializer};
 use serde::ser::SerializeMap;
+use serde::{Serialize, Serializer};
 use serde_json::Value;
 
 #[cfg(test)]

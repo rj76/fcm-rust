@@ -20,7 +20,7 @@ impl Default for Client {
 
 #[derive(Serialize, Debug)]
 pub struct MessageWrapper {
-    pub message: Message
+    pub message: Message,
 }
 
 impl Client {
@@ -155,7 +155,7 @@ impl Client {
             StatusCode::BAD_REQUEST => {
                 let body = response.text().await.unwrap();
                 Err(FcmError::InvalidMessage(format!("Bad Request ({body}")))
-            },
+            }
             status if status.is_server_error() => Err(FcmError::ServerError(retry_after)),
             _ => Err(FcmError::InvalidMessage("Unknown Error".to_string())),
         }

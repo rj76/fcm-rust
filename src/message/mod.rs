@@ -2,6 +2,7 @@ use crate::android::AndroidConfig;
 use crate::apns::ApnsConfig;
 use crate::web::WebpushConfig;
 use crate::Notification;
+use serde::ser::SerializeMap;
 use serde::{Serialize, Serializer};
 use serde_json::Value;
 
@@ -20,11 +21,13 @@ fn output_target<S>(target: &Target, s: S) -> Result<S::Ok, S::Error>
 where
     S: Serializer,
 {
+    let mut map = s.serialize_map(Some(1))?;
     match target {
-        Target::Token(token) => s.serialize_newtype_struct("token", token.as_str()),
-        Target::Topic(topic) => s.serialize_newtype_struct("topic", topic.as_str()),
-        Target::Condition(condition) => s.serialize_newtype_struct("condition", condition.as_str()),
+        Target::Token(token) => map.serialize_entry("token", token.as_str())?,
+        Target::Topic(topic) => map.serialize_entry("topic", topic.as_str())?,
+        Target::Condition(condition) => map.serialize_entry("condition", condition.as_str())?,
     }
+    map.end()
 }
 
 #[derive(Serialize, Debug)]
@@ -55,7 +58,7 @@ pub struct Message {
     fcm_options: Option<FcmOptions>,
 
     // Target to send a message to.
-    #[serde(serialize_with = "output_target")]
+    #[serde(flatten, serialize_with = "output_target")]
     target: Target,
 }
 

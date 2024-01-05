@@ -5,6 +5,7 @@ use crate::Message;
 use gauth::serv_account::ServiceAccount;
 use reqwest::header::RETRY_AFTER;
 use reqwest::{Body, StatusCode};
+use serde::Serialize;
 
 /// An async client for sending the notification payload.
 pub struct Client {
@@ -15,6 +16,11 @@ impl Default for Client {
     fn default() -> Self {
         Self::new()
     }
+}
+
+#[derive(Serialize, Debug)]
+pub struct MessageWrapper {
+    pub message: Message,
 }
 
 impl Client {
@@ -101,7 +107,8 @@ impl Client {
     }
 
     pub async fn send(&self, message: Message) -> Result<FcmResponse, FcmError> {
-        let payload = serde_json::to_vec(&message).unwrap();
+        let wrapper = MessageWrapper { message };
+        let payload = serde_json::to_vec(&wrapper).unwrap();
 
         let project_id = match self.get_project_id() {
             Ok(project_id) => project_id,
@@ -123,6 +130,7 @@ impl Client {
             .bearer_auth(auth_token)
             .body(Body::from(payload))
             .build()?;
+
         let response = self.http_client.execute(request).await?;
 
         let response_status = response.status();
@@ -144,7 +152,10 @@ impl Client {
                 }
             }
             StatusCode::UNAUTHORIZED => Err(FcmError::Unauthorized),
-            StatusCode::BAD_REQUEST => Err(FcmError::InvalidMessage("Bad Request".to_string())),
+            StatusCode::BAD_REQUEST => {
+                let body = response.text().await.unwrap();
+                Err(FcmError::InvalidMessage(format!("Bad Request ({body}")))
+            }
             status if status.is_server_error() => Err(FcmError::ServerError(retry_after)),
             _ => Err(FcmError::InvalidMessage("Unknown Error".to_string())),
         }

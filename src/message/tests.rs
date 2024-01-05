@@ -24,7 +24,7 @@ fn should_leave_nones_out_of_the_json() {
     let payload = serde_json::to_string(&msg).unwrap();
 
     let expected_payload = json!({
-        "target": "token"
+        "token": "token"
     })
     .to_string();
 
@@ -48,7 +48,7 @@ fn should_add_custom_data_to_the_payload() {
             "foo": "bar",
             "bar": false,
         },
-        "target": "token"
+        "token": "token"
     })
     .to_string();
 
@@ -56,7 +56,7 @@ fn should_add_custom_data_to_the_payload() {
 }
 
 #[test]
-fn should_be_able_to_render_a_full_message_to_json() {
+fn should_be_able_to_render_a_full_token_message_to_json() {
     let target = Target::Token("token".to_string());
     let mut builder = MessageBuilder::new(target);
 
@@ -66,7 +66,43 @@ fn should_be_able_to_render_a_full_message_to_json() {
 
     let expected_payload = json!({
         "notification": {},
-        "target": "token",
+        "token": "token",
+    })
+    .to_string();
+
+    assert_eq!(expected_payload, payload);
+}
+
+#[test]
+fn should_be_able_to_render_a_full_topic_message_to_json() {
+    let target = Target::Topic("my_topic".to_string());
+    let mut builder = MessageBuilder::new(target);
+
+    builder.notification(NotificationBuilder::new().finalize());
+
+    let payload = serde_json::to_string(&builder.finalize()).unwrap();
+
+    let expected_payload = json!({
+        "notification": {},
+        "topic": "my_topic",
+    })
+    .to_string();
+
+    assert_eq!(expected_payload, payload);
+}
+
+#[test]
+fn should_be_able_to_render_a_full_condition_message_to_json() {
+    let target = Target::Condition("my_condition".to_string());
+    let mut builder = MessageBuilder::new(target);
+
+    builder.notification(NotificationBuilder::new().finalize());
+
+    let payload = serde_json::to_string(&builder.finalize()).unwrap();
+
+    let expected_payload = json!({
+        "notification": {},
+        "condition": "my_condition",
     })
     .to_string();
 

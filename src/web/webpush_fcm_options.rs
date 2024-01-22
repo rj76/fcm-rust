@@ -10,7 +10,7 @@ pub(crate) struct WebpushFcmOptionsInternal {
     analytics_label: String,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 // https://firebase.google.com/docs/reference/fcm/rest/v1/projects.messages?authuser=0#webpushfcmoptions
 pub struct WebpushFcmOptions {
     // The link to open when the user clicks on the notification.

@@ -116,7 +116,7 @@ pub(crate) struct AndroidNotificationInternal {
     image: Option<String>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 // https://firebase.google.com/docs/reference/fcm/rest/v1/projects.messages?authuser=0#androidnotification
 pub struct AndroidNotification {
     // The notification's title.

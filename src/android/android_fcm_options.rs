@@ -7,7 +7,7 @@ pub(crate) struct AndroidFcmOptionsInternal {
     analytics_label: String,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct AndroidFcmOptions {
     pub analytics_label: String,
 }

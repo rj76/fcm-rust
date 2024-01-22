@@ -23,18 +23,7 @@ pub(crate) struct NotificationInternal {
 }
 
 /// A builder to get a `Notification` instance.
-///
-/// # Examples
-///
-/// ```rust
-/// use fcm::NotificationBuilder;
-///
-/// let mut builder = NotificationBuilder::new();
-///  builder.title("Australia vs New Zealand".to_string());
-/// builder.body("3 runs to win in 1 ball".to_string());
-/// let notification = builder.finalize();
-/// ```
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct Notification {
     pub title: Option<String>,
     pub body: Option<String>,

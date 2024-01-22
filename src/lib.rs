@@ -9,55 +9,38 @@
 //! To send out a FCM Message with some custom data:
 //!
 //! ```no_run
-//! # use std::collections::HashMap;
-//! # #[tokio::main]
-//! # async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-//! use fcm::Target;
-//! let client = fcm::Client::new();
 //!
-//! let mut map = HashMap::new();
-//! map.insert("message", "Howdy!");
+//! #[tokio::main]
+//! async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+//!     use serde_json::json;
+//!     use fcm::{Target, FcmOptions, Notification, Message};
+//!     let client = fcm::Client::new();
 //!
-//! let mut builder = fcm::MessageBuilder::new(Target::Token("token".to_string()));
-//! builder.data(&map);
+//!     let data = json!({
+//!         "message": "Howdy!"
+//!     });
 //!
-//! let response = client.send(builder.finalize()).await?;
-//! println!("Sent: {:?}", response);
-//! # Ok(())
-//! # }
-//! ```
+//!     let builder = Message {
+//!         data: Some(data),
+//!         notification: Some(Notification {
+//!             title: Some("Hello".to_string()),
+//!             body: Some(format!("it's {}", chrono::Utc::now())),
+//!             image: None,
+//!         }),
+//!         target: Target::Token("token".to_string()),
+//!         android: None,
+//!         webpush: None,
+//!         apns: None,
+//!         fcm_options: Some(FcmOptions {
+//!             analytics_label: "analytics_label".to_string(),
+//!         }),
+//!     };
 //!
-//! To send a message using FCM Notifications, we first build the notification:
+//!     let response = client.send(builder).await?;
+//!     println!("Sent: {:?}", response);
 //!
-//! ```rust
-//! # fn main() {
-//! let mut builder = fcm::NotificationBuilder::new();
-//! builder.title("Hey!".to_string());
-//! builder.body("Do you want to catch up later?".to_string());
-//! let notification = builder.finalize();
-//! # }
-//! ```
-//!
-//! And then set it in the message, before sending it:
-//!
-//! ```no_run
-//! # #[tokio::main]
-//! # async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-//! use fcm::Target;
-//! let client = fcm::Client::new();
-//!
-//! let mut notification_builder = fcm::NotificationBuilder::new();
-//! notification_builder.title("Hey!".to_string());
-//! notification_builder.body("Do you want to catch up later?".to_string());
-//!
-//! let notification = notification_builder.finalize();
-//! let mut message_builder = fcm::MessageBuilder::new(Target::Token("token".to_string()));
-//! message_builder.notification(notification);
-//!
-//! let response = client.send(message_builder.finalize()).await?;
-//! println!("Sent: {:?}", response);
-//! # Ok(())
-//! # }
+//!     Ok(())
+//! }
 //! ```
 
 mod message;

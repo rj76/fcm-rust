@@ -17,7 +17,7 @@ pub(crate) struct LightSettingsInternal {
     light_off_duration: String,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 // https://firebase.google.com/docs/reference/fcm/rest/v1/projects.messages?authuser=0#LightSettings
 pub struct LightSettings {
     // Set color of the LED with google.type.Color.

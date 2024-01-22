@@ -10,7 +10,7 @@ pub(crate) struct ApnsFcmOptionsInternal {
     image: Option<String>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct ApnsFcmOptions {
     // Label associated with the message's analytics data.
     pub analytics_label: Option<String>,

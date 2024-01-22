@@ -19,7 +19,7 @@ pub(crate) struct ApnsConfigInternal {
     fcm_options: Option<ApnsFcmOptionsInternal>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct ApnsConfig {
     pub headers: Option<Value>,
     pub payload: Option<Value>,

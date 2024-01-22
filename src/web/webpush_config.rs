@@ -24,7 +24,7 @@ pub(crate) struct WebpushConfigInternal {
     fcm_options: Option<WebpushFcmOptionsInternal>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct WebpushConfig {
     pub headers: Option<Value>,
     pub data: Option<Value>,

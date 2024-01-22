@@ -1,7 +1,9 @@
 // cargo run --example simple_sender -- -t <device_token>
 
 use argparse::{ArgumentParser, Store};
-use fcm::{Client, FcmOptions, Message, Notification, Target};
+use fcm::{
+    AndroidConfig, AndroidNotification, ApnsConfig, Client, FcmOptions, Message, Notification, Target, WebpushConfig,
+};
 use serde_json::json;
 
 #[tokio::main]
@@ -27,17 +29,25 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let builder = Message {
         data: Some(data),
         notification: Some(Notification {
-            title: Some("Hello".to_string()),
+            title: Some("I'm high".to_string()),
             body: Some(format!("it's {}", chrono::Utc::now())),
-            image: None,
+            ..Default::default()
         }),
         target: Target::Token(device_token),
-        android: None,
-        webpush: None,
-        apns: None,
         fcm_options: Some(FcmOptions {
             analytics_label: "analytics_label".to_string(),
         }),
+        android: Some(AndroidConfig {
+            priority: Some(fcm::AndroidMessagePriority::High),
+            notification: Some(AndroidNotification {
+                title: Some("I'm Android high".to_string()),
+                body: Some(format!("Hi Android, it's {}", chrono::Utc::now())),
+                ..Default::default()
+            }),
+            ..Default::default()
+        }),
+        apns: Some(ApnsConfig { ..Default::default() }),
+        webpush: Some(WebpushConfig { ..Default::default() }),
     };
 
     let response = client.send(builder).await?;

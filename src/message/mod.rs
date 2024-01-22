@@ -67,18 +67,7 @@ pub(crate) struct MessageInternal {
     target: Target,
 }
 
-///
-/// A builder to get a `Message` instance.
-///
-/// # Examples
-///
-/// ```rust
-/// use fcm::{MessageBuilder, NotificationBuilder, Target};
-///
-/// let mut builder = MessageBuilder::new(Target::Token("token".to_string()));
-/// builder.notification(NotificationBuilder::new().finalize());
-/// let message = builder.finalize();
-/// ```
+/// A `Message` instance is the main object to send to the FCM API.
 #[derive(Debug)]
 pub struct Message {
     pub data: Option<Value>,

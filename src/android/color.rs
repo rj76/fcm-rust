@@ -16,7 +16,7 @@ pub(crate) struct ColorInternal {
     alpha: f32,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct Color {
     // The amount of red in the color as a value in the interval [0, 1].
     pub red: f32,

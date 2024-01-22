@@ -7,7 +7,7 @@ pub(crate) struct FcmOptionsInternal {
     analytics_label: String,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct FcmOptions {
     pub analytics_label: String,
 }

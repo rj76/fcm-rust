@@ -45,7 +45,7 @@ pub(crate) struct AndroidConfigInternal {
     direct_boot_ok: Option<bool>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct AndroidConfig {
     pub collapse_key: Option<String>,
     pub priority: Option<AndroidMessagePriority>,

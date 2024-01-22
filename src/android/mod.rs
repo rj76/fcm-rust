@@ -36,7 +36,7 @@ pub struct AndroidConfig {
 
     // If set to true, messages will be allowed to be delivered to the app while the device is in direct boot mode.
     #[serde(skip_serializing_if = "Option::is_none")]
-    direct_boot_ok: Option<bool>
+    direct_boot_ok: Option<bool>,
 }
 
 #[derive(Serialize, Debug)]
@@ -52,7 +52,7 @@ pub struct Color {
     blue: f32,
 
     // The fraction of this color that should be applied to the pixel.
-    alpha: f32
+    alpha: f32,
 }
 
 #[derive(Serialize, Debug)]
@@ -184,7 +184,7 @@ pub struct AndroidNotification {
 //https://firebase.google.com/docs/reference/fcm/rest/v1/projects.messages?authuser=0#androidconfig
 pub struct AndroidFcmOptions {
     // Label associated with the message's analytics data.
-    analytics_label: String
+    analytics_label: String,
 }
 
 #[allow(dead_code)]
@@ -206,7 +206,7 @@ pub enum NotificationPriority {
     PriorityLow,
     PriorityDefault,
     PriorityHigh,
-    PriorityMax
+    PriorityMax,
 }
 
 #[allow(dead_code)]
@@ -217,5 +217,5 @@ pub enum Visibility {
     VisibilityUnspecified,
     Private,
     Public,
-    Secret
+    Secret,
 }

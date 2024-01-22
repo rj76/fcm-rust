@@ -29,5 +29,5 @@ pub struct WebpushFcmOptions {
     link: String,
 
     // Label associated with the message's analytics data.
-    analytics_label: String
+    analytics_label: String,
 }

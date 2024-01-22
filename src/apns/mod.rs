@@ -24,5 +24,5 @@ pub struct ApnsFcmOptions {
     analytics_label: String,
 
     // Contains the URL of an image that is going to be displayed in a notification.
-    image: String
+    image: String,
 }

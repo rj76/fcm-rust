@@ -5,7 +5,7 @@ use super::apns_fcm_options::{ApnsFcmOptions, ApnsFcmOptionsInternal};
 
 #[derive(Serialize, Debug)]
 // https://firebase.google.com/docs/reference/fcm/rest/v1/projects.messages?authuser=0#apnsconfig
-pub struct ApnsConfigInternal {
+pub(crate) struct ApnsConfigInternal {
     // HTTP request headers defined in Apple Push Notification Service.
     #[serde(skip_serializing_if = "Option::is_none")]
     headers: Option<Value>,
@@ -27,7 +27,7 @@ pub struct ApnsConfig {
 }
 
 impl ApnsConfig {
-    pub fn finalize(self) -> ApnsConfigInternal {
+    pub(crate) fn finalize(self) -> ApnsConfigInternal {
         ApnsConfigInternal {
             headers: self.headers,
             payload: self.payload,

@@ -2,7 +2,7 @@ use serde::Serialize;
 
 #[derive(Serialize, Debug)]
 // https://firebase.google.com/docs/reference/fcm/rest/v1/projects.messages?authuser=0#apnsfcmoptions
-pub struct ApnsFcmOptionsInternal {
+pub(crate) struct ApnsFcmOptionsInternal {
     // Label associated with the message's analytics data.
     analytics_label: Option<String>,
 
@@ -20,7 +20,7 @@ pub struct ApnsFcmOptions {
 }
 
 impl ApnsFcmOptions {
-    pub fn finalize(self) -> ApnsFcmOptionsInternal {
+    pub(crate) fn finalize(self) -> ApnsFcmOptionsInternal {
         ApnsFcmOptionsInternal {
             analytics_label: self.analytics_label,
             image: self.image,

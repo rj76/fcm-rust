@@ -1,4 +1,4 @@
-use crate::{notification::Notification, target::Target, Message};
+use crate::{message::Target, notification::Notification, Message};
 use serde_json::json;
 
 #[test]

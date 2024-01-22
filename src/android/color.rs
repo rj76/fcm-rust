@@ -2,7 +2,7 @@ use serde::Serialize;
 
 #[derive(Serialize, Debug)]
 // https://firebase.google.com/docs/reference/fcm/rest/v1/projects.messages?authuser=0#Color
-pub struct ColorInternal {
+pub(crate) struct ColorInternal {
     // The amount of red in the color as a value in the interval [0, 1].
     red: f32,
 
@@ -32,7 +32,7 @@ pub struct Color {
 }
 
 impl Color {
-    pub fn finalize(self) -> ColorInternal {
+    pub(crate) fn finalize(self) -> ColorInternal {
         ColorInternal {
             red: self.red,
             green: self.green,

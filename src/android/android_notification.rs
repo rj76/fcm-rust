@@ -8,7 +8,7 @@ use super::{
 
 #[derive(Serialize, Debug)]
 // https://firebase.google.com/docs/reference/fcm/rest/v1/projects.messages?authuser=0#androidnotification
-pub struct AndroidNotificationInternal {
+pub(crate) struct AndroidNotificationInternal {
     // The notification's title.
     #[serde(skip_serializing_if = "Option::is_none")]
     title: Option<String>,
@@ -202,7 +202,7 @@ pub struct AndroidNotification {
 }
 
 impl AndroidNotification {
-    pub fn finalize(self) -> AndroidNotificationInternal {
+    pub(crate) fn finalize(self) -> AndroidNotificationInternal {
         AndroidNotificationInternal {
             title: self.title,
             body: self.body,

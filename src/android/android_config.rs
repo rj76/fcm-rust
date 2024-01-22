@@ -9,7 +9,7 @@ use super::{
 
 #[derive(Serialize, Debug)]
 //https://firebase.google.com/docs/reference/fcm/rest/v1/projects.messages?authuser=0#androidconfig
-pub struct AndroidConfigInternal {
+pub(crate) struct AndroidConfigInternal {
     // An identifier of a group of messages that can be collapsed, so that only the last message gets
     // sent when delivery can be resumed.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -58,7 +58,7 @@ pub struct AndroidConfig {
 }
 
 impl AndroidConfig {
-    pub fn finalize(self) -> AndroidConfigInternal {
+    pub(crate) fn finalize(self) -> AndroidConfigInternal {
         AndroidConfigInternal {
             collapse_key: self.collapse_key,
             priority: self.priority,

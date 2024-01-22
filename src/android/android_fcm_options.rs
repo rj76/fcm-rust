@@ -2,7 +2,7 @@ use serde::Serialize;
 
 #[derive(Serialize, Debug)]
 //https://firebase.google.com/docs/reference/fcm/rest/v1/projects.messages?authuser=0#androidconfig
-pub struct AndroidFcmOptionsInternal {
+pub(crate) struct AndroidFcmOptionsInternal {
     // Label associated with the message's analytics data.
     analytics_label: String,
 }
@@ -13,7 +13,7 @@ pub struct AndroidFcmOptions {
 }
 
 impl AndroidFcmOptions {
-    pub fn finalize(self) -> AndroidFcmOptionsInternal {
+    pub(crate) fn finalize(self) -> AndroidFcmOptionsInternal {
         AndroidFcmOptionsInternal {
             analytics_label: self.analytics_label,
         }

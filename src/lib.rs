@@ -61,15 +61,31 @@
 //! ```
 
 mod message;
+pub use crate::message::fcm_options::*;
+pub use crate::message::target::*;
 pub use crate::message::*;
 
 mod notification;
 pub use crate::notification::*;
+
 mod android;
+pub use crate::android::android_config::*;
+pub use crate::android::android_fcm_options::*;
+pub use crate::android::android_message_priority::*;
+pub use crate::android::android_notification::*;
+pub use crate::android::color::*;
+pub use crate::android::light_settings::*;
+pub use crate::android::notification_priority::*;
+pub use crate::android::visibility::*;
+
 mod apns;
-mod client;
+pub use crate::apns::apns_config::*;
+pub use crate::apns::apns_fcm_options::*;
+
 mod web;
+pub use crate::web::webpush_config::*;
+pub use crate::web::webpush_fcm_options::*;
 
-pub use crate::client::*;
-
+mod client;
 pub use crate::client::response::FcmError as Error;
+pub use crate::client::*;

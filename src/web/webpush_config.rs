@@ -5,7 +5,7 @@ use super::webpush_fcm_options::{WebpushFcmOptions, WebpushFcmOptionsInternal};
 
 #[derive(Serialize, Debug)]
 // https://firebase.google.com/docs/reference/fcm/rest/v1/projects.messages?authuser=0#webpushconfig
-pub struct WebpushConfigInternal {
+pub(crate) struct WebpushConfigInternal {
     // HTTP headers defined in webpush protocol.
     #[serde(skip_serializing_if = "Option::is_none")]
     headers: Option<Value>,
@@ -33,7 +33,7 @@ pub struct WebpushConfig {
 }
 
 impl WebpushConfig {
-    pub fn finalize(self) -> WebpushConfigInternal {
+    pub(crate) fn finalize(self) -> WebpushConfigInternal {
         WebpushConfigInternal {
             headers: self.headers,
             data: self.data,

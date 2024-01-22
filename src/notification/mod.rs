@@ -8,7 +8,7 @@ use serde::Serialize;
 /// this notification instance when sending a FCM message.
 #[derive(Serialize, Debug, PartialEq)]
 // https://firebase.google.com/docs/reference/fcm/rest/v1/projects.messages?authuser=0#notification
-pub struct NotificationInternal {
+pub(crate) struct NotificationInternal {
     // The notification's title.
     #[serde(skip_serializing_if = "Option::is_none")]
     title: Option<String>,
@@ -43,7 +43,7 @@ pub struct Notification {
 
 impl Notification {
     /// Complete the build and get a `Notification` instance
-    pub fn finalize(self) -> NotificationInternal {
+    pub(crate) fn finalize(self) -> NotificationInternal {
         NotificationInternal {
             title: self.title,
             body: self.body,

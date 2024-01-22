@@ -1,5 +1,6 @@
 pub mod fcm_options;
 pub mod target;
+
 #[cfg(test)]
 mod tests;
 
@@ -12,13 +13,13 @@ use crate::android::android_config::AndroidConfig;
 use crate::android::android_config::AndroidConfigInternal;
 use crate::apns::apns_config::ApnsConfig;
 use crate::apns::apns_config::ApnsConfigInternal;
-use crate::fcm_options::FcmOptions;
-use crate::fcm_options::FcmOptionsInternal;
 use crate::notification::Notification;
 use crate::notification::NotificationInternal;
 use crate::web::webpush_config::WebpushConfig;
 use crate::web::webpush_config::WebpushConfigInternal;
 
+use self::fcm_options::FcmOptions;
+use self::fcm_options::FcmOptionsInternal;
 use self::target::Target;
 
 fn output_target<S>(target: &Target, s: S) -> Result<S::Ok, S::Error>
@@ -36,7 +37,7 @@ where
 
 #[derive(Serialize, Debug)]
 // https://firebase.google.com/docs/reference/fcm/rest/v1/projects.messages?authuser=0#resource:-message
-pub struct MessageInternal {
+pub(crate) struct MessageInternal {
     // Arbitrary key/value payload, which must be UTF-8 encoded.
     #[serde(skip_serializing_if = "Option::is_none")]
     data: Option<Value>,
@@ -91,7 +92,7 @@ pub struct Message {
 
 impl Message {
     /// Complete the build and get a `Message` instance
-    pub fn finalize(self) -> MessageInternal {
+    pub(crate) fn finalize(self) -> MessageInternal {
         MessageInternal {
             data: self.data,
             notification: self.notification.map(|n| n.finalize()),

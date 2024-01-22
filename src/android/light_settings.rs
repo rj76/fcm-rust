@@ -4,7 +4,7 @@ use super::color::{Color, ColorInternal};
 
 #[derive(Serialize, Debug)]
 // https://firebase.google.com/docs/reference/fcm/rest/v1/projects.messages?authuser=0#LightSettings
-pub struct LightSettingsInternal {
+pub(crate) struct LightSettingsInternal {
     // Set color of the LED with google.type.Color.
     color: ColorInternal,
 
@@ -33,7 +33,7 @@ pub struct LightSettings {
 }
 
 impl LightSettings {
-    pub fn finalize(self) -> LightSettingsInternal {
+    pub(crate) fn finalize(self) -> LightSettingsInternal {
         LightSettingsInternal {
             color: self.color.finalize(),
             light_on_duration: self.light_on_duration,

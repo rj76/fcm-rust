@@ -2,7 +2,7 @@ use serde::Serialize;
 
 #[derive(Serialize, Debug)]
 // https://firebase.google.com/docs/reference/fcm/rest/v1/projects.messages?authuser=0#webpushfcmoptions
-pub struct WebpushFcmOptionsInternal {
+pub(crate) struct WebpushFcmOptionsInternal {
     // The link to open when the user clicks on the notification.
     link: String,
 
@@ -21,7 +21,7 @@ pub struct WebpushFcmOptions {
 }
 
 impl WebpushFcmOptions {
-    pub fn finalize(self) -> WebpushFcmOptionsInternal {
+    pub(crate) fn finalize(self) -> WebpushFcmOptionsInternal {
         WebpushFcmOptionsInternal {
             link: self.link,
             analytics_label: self.analytics_label,

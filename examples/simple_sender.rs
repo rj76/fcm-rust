@@ -1,7 +1,7 @@
 // cargo run --example simple_sender -- -t <device_token>
 
 use argparse::{ArgumentParser, Store};
-use fcm::{fcm_options::FcmOptions, target::Target, Client, Message, Notification};
+use fcm::{Client, FcmOptions, Message, Notification, Target};
 use serde_json::json;
 
 #[tokio::main]

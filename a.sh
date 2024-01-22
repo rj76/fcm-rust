@@ -1,0 +1,1 @@
+cargo run --example simple_sender -- -t fP0EXs_HQ4Gj1sE5xBP6LP:APA91bGxDOk4GzvIvvGFPa6kDWOOHm2zYA3tUN1jYwErSBq_s27NioYjYWfUpgUW3_LIsreSw1pbtTjEpCK_cKR6AHxo1PGZ1Yd3S8lyX148I_LgKaTNYorG2QtkcwfB9Nm5yKGJwLaG

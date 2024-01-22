@@ -1,11 +1,8 @@
-use argparse::{ArgumentParser, Store};
-use fcm::{Client, MessageBuilder, Target};
-use serde::Serialize;
+// cargo run --example simple_sender -- -t <device_token>
 
-#[derive(Serialize)]
-struct CustomData {
-    message: &'static str,
-}
+use argparse::{ArgumentParser, Store};
+use fcm::{fcm_options::FcmOptions, target::Target, Client, Message, Notification};
+use serde_json::json;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
@@ -22,12 +19,28 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     }
 
     let client = Client::new();
-    let data = CustomData { message: "howdy" };
 
-    let mut builder = MessageBuilder::new(Target::Token(device_token));
-    builder.data(&data)?;
+    let data = json!({
+        "key": "value",
+    });
 
-    let response = client.send(builder.finalize()).await?;
+    let builder = Message {
+        data: Some(data),
+        notification: Some(Notification {
+            title: Some("Hello".to_string()),
+            body: Some(format!("it's {}", chrono::Utc::now())),
+            image: None,
+        }),
+        target: Target::Token(device_token),
+        android: None,
+        webpush: None,
+        apns: None,
+        fcm_options: Some(FcmOptions {
+            analytics_label: "analytics_label".to_string(),
+        }),
+    };
+
+    let response = client.send(builder).await?;
     println!("Sent: {:?}", response);
 
     Ok(())

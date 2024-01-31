@@ -99,7 +99,7 @@ impl Client {
         Ok(tkn)
     }
 
-    pub async fn access_token(&self) -> Result<String, String> {
+    async fn access_token(&self) -> Result<String, String> {
         let scopes = vec!["https://www.googleapis.com/auth/firebase.messaging"];
         let key_path = self.get_service_key_file_name()?;
 

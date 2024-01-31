@@ -8,52 +8,59 @@ use super::{
 };
 
 #[derive(Serialize, Debug)]
-//https://firebase.google.com/docs/reference/fcm/rest/v1/projects.messages?authuser=0#androidconfig
 pub(crate) struct AndroidConfigInternal {
-    // An identifier of a group of messages that can be collapsed, so that only the last message gets
-    // sent when delivery can be resumed.
     #[serde(skip_serializing_if = "Option::is_none")]
     collapse_key: Option<String>,
 
-    // Message priority.
     #[serde(skip_serializing_if = "Option::is_none")]
     priority: Option<AndroidMessagePriority>,
 
-    // How long (in seconds) the message should be kept in FCM storage if the device is offline.
-    // Duration format: https://developers.google.com/protocol-buffers/docs/reference/google.protobuf?authuser=0#google.protobuf.Duration
     #[serde(skip_serializing_if = "Option::is_none")]
     ttl: Option<String>,
 
-    // Package name of the application where the registration token must match in order to receive the message.
     #[serde(skip_serializing_if = "Option::is_none")]
     restricted_package_name: Option<String>,
 
-    // Arbitrary key/value payload.
     #[serde(skip_serializing_if = "Option::is_none")]
     data: Option<Value>,
 
-    // Notification to send to android devices.
     #[serde(skip_serializing_if = "Option::is_none")]
     notification: Option<AndroidNotificationInternal>,
 
-    // Options for features provided by the FCM SDK for Android.
     #[serde(skip_serializing_if = "Option::is_none")]
     fcm_options: Option<AndroidFcmOptionsInternal>,
 
-    // If set to true, messages will be allowed to be delivered to the app while the device is in direct boot mode.
     #[serde(skip_serializing_if = "Option::is_none")]
     direct_boot_ok: Option<bool>,
 }
 
 #[derive(Debug, Default)]
+/// https://firebase.google.com/docs/reference/fcm/rest/v1/projects.messages?authuser=0#androidconfig
 pub struct AndroidConfig {
+    /// An identifier of a group of messages that can be collapsed, so that only the last message gets
+    /// sent when delivery can be resumed.
     pub collapse_key: Option<String>,
+
+    /// Message priority.
     pub priority: Option<AndroidMessagePriority>,
+
+    /// How long (in seconds) the message should be kept in FCM storage if the device is offline.
+    /// Duration format: https://developers.google.com/protocol-buffers/docs/reference/google.protobuf?authuser=0#google.protobuf.Duration
     pub ttl: Option<String>,
+
+    /// Package name of the application where the registration token must match in order to receive the message.
     pub restricted_package_name: Option<String>,
+
+    /// Arbitrary key/value payload.
     pub data: Option<Value>,
+
+    /// Notification to send to android devices.
     pub notification: Option<AndroidNotification>,
+
+    /// Options for features provided by the FCM SDK for Android.
     pub fcm_options: Option<AndroidFcmOptions>,
+
+    /// If set to true, messages will be allowed to be delivered to the app while the device is in direct boot mode.
     pub direct_boot_ok: Option<bool>,
 }
 

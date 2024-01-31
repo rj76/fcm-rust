@@ -1,22 +1,22 @@
 use serde::Serialize;
 
 #[derive(Serialize, Debug)]
-// https://firebase.google.com/docs/reference/fcm/rest/v1/projects.messages?authuser=0#webpushfcmoptions
+/// https://firebase.google.com/docs/reference/fcm/rest/v1/projects.messages?authuser=0#webpushfcmoptions
 pub(crate) struct WebpushFcmOptionsInternal {
-    // The link to open when the user clicks on the notification.
+    /// The link to open when the user clicks on the notification.
     link: String,
 
-    // Label associated with the message's analytics data.
+    /// Label associated with the message's analytics data.
     analytics_label: String,
 }
 
 #[derive(Debug, Default)]
-// https://firebase.google.com/docs/reference/fcm/rest/v1/projects.messages?authuser=0#webpushfcmoptions
+/// https://firebase.google.com/docs/reference/fcm/rest/v1/projects.messages?authuser=0#webpushfcmoptions
 pub struct WebpushFcmOptions {
-    // The link to open when the user clicks on the notification.
+    /// The link to open when the user clicks on the notification.
     pub link: String,
 
-    // Label associated with the message's analytics data.
+    /// Label associated with the message's analytics data.
     pub analytics_label: String,
 }
 

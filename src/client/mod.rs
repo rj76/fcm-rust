@@ -1,7 +1,7 @@
 pub(crate) mod response;
 
 use crate::client::response::{ErrorReason, FcmError, FcmResponse, RetryAfter};
-use crate::Message;
+use crate::{Message, MessageInternal};
 use gauth::serv_account::ServiceAccount;
 use reqwest::header::RETRY_AFTER;
 use reqwest::{Body, StatusCode};
@@ -18,9 +18,17 @@ impl Default for Client {
     }
 }
 
-#[derive(Serialize, Debug)]
-pub struct MessageWrapper {
-    pub message: Message,
+// will be used to wrap the message in a "message" field
+#[derive(Serialize)]
+struct MessageWrapper<'a> {
+    #[serde(rename = "message")]
+    message: &'a MessageInternal,
+}
+
+impl MessageWrapper<'_> {
+    fn new(message: &MessageInternal) -> MessageWrapper {
+        MessageWrapper { message }
+    }
 }
 
 impl Client {
@@ -91,7 +99,7 @@ impl Client {
         Ok(tkn)
     }
 
-    pub async fn access_token(&self) -> Result<String, String> {
+    async fn access_token(&self) -> Result<String, String> {
         let scopes = vec!["https://www.googleapis.com/auth/firebase.messaging"];
         let key_path = self.get_service_key_file_name()?;
 
@@ -101,13 +109,14 @@ impl Client {
             Err(err) => return Err(err.to_string()),
         };
 
-        let token_no_bearer = access_token.split(" ").collect::<Vec<&str>>()[1];
+        let token_no_bearer = access_token.split(char::is_whitespace).collect::<Vec<&str>>()[1];
 
         Ok(token_no_bearer.to_string())
     }
 
     pub async fn send(&self, message: Message) -> Result<FcmResponse, FcmError> {
-        let wrapper = MessageWrapper { message };
+        let fin = message.finalize();
+        let wrapper = MessageWrapper::new(&fin);
         let payload = serde_json::to_vec(&wrapper).unwrap();
 
         let project_id = match self.get_project_id() {

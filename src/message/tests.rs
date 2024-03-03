@@ -1,18 +1,19 @@
-use crate::notification::NotificationBuilder;
-use crate::{MessageBuilder, Target};
-use serde::Serialize;
+use crate::{message::Target, notification::Notification, Message};
 use serde_json::json;
-
-#[derive(Serialize)]
-struct CustomData {
-    foo: &'static str,
-    bar: bool,
-}
 
 #[test]
 fn should_create_new_message() {
     let target = Target::Token("token".to_string());
-    let msg = MessageBuilder::new(target.clone()).finalize();
+    let msg = Message {
+        target: target.clone(),
+        data: None,
+        notification: None,
+        android: None,
+        webpush: None,
+        apns: None,
+        fcm_options: None,
+    }
+    .finalize();
 
     assert_eq!(msg.target, target);
 }
@@ -20,7 +21,16 @@ fn should_create_new_message() {
 #[test]
 fn should_leave_nones_out_of_the_json() {
     let target = Target::Token("token".to_string());
-    let msg = MessageBuilder::new(target).finalize();
+    let msg = Message {
+        target: target.clone(),
+        data: None,
+        notification: None,
+        android: None,
+        webpush: None,
+        apns: None,
+        fcm_options: None,
+    }
+    .finalize();
     let payload = serde_json::to_string(&msg).unwrap();
 
     let expected_payload = json!({
@@ -34,11 +44,17 @@ fn should_leave_nones_out_of_the_json() {
 #[test]
 fn should_add_custom_data_to_the_payload() {
     let target = Target::Token("token".to_string());
-    let mut builder = MessageBuilder::new(target);
+    let data = json!({ "foo": "bar", "bar": false });
 
-    let data = CustomData { foo: "bar", bar: false };
-
-    builder.data(&data).unwrap();
+    let builder = Message {
+        target: target,
+        data: Some(data),
+        notification: None,
+        android: None,
+        webpush: None,
+        apns: None,
+        fcm_options: None,
+    };
 
     let msg = builder.finalize();
     let payload = serde_json::to_string(&msg).unwrap();
@@ -58,9 +74,20 @@ fn should_add_custom_data_to_the_payload() {
 #[test]
 fn should_be_able_to_render_a_full_token_message_to_json() {
     let target = Target::Token("token".to_string());
-    let mut builder = MessageBuilder::new(target);
-
-    builder.notification(NotificationBuilder::new().finalize());
+    let notification = Notification {
+        title: None,
+        body: None,
+        image: None,
+    };
+    let builder = Message {
+        target: target.clone(),
+        data: None,
+        notification: Some(notification),
+        android: None,
+        webpush: None,
+        apns: None,
+        fcm_options: None,
+    };
 
     let payload = serde_json::to_string(&builder.finalize()).unwrap();
 
@@ -76,9 +103,20 @@ fn should_be_able_to_render_a_full_token_message_to_json() {
 #[test]
 fn should_be_able_to_render_a_full_topic_message_to_json() {
     let target = Target::Topic("my_topic".to_string());
-    let mut builder = MessageBuilder::new(target);
-
-    builder.notification(NotificationBuilder::new().finalize());
+    let notification = Notification {
+        title: None,
+        body: None,
+        image: None,
+    };
+    let builder = Message {
+        target: target.clone(),
+        data: None,
+        notification: Some(notification),
+        android: None,
+        webpush: None,
+        apns: None,
+        fcm_options: None,
+    };
 
     let payload = serde_json::to_string(&builder.finalize()).unwrap();
 
@@ -94,9 +132,20 @@ fn should_be_able_to_render_a_full_topic_message_to_json() {
 #[test]
 fn should_be_able_to_render_a_full_condition_message_to_json() {
     let target = Target::Condition("my_condition".to_string());
-    let mut builder = MessageBuilder::new(target);
-
-    builder.notification(NotificationBuilder::new().finalize());
+    let notification = Notification {
+        title: None,
+        body: None,
+        image: None,
+    };
+    let builder = Message {
+        target: target.clone(),
+        data: None,
+        notification: Some(notification),
+        android: None,
+        webpush: None,
+        apns: None,
+        fcm_options: None,
+    };
 
     let payload = serde_json::to_string(&builder.finalize()).unwrap();
 
@@ -112,15 +161,23 @@ fn should_be_able_to_render_a_full_condition_message_to_json() {
 #[test]
 fn should_set_notifications() {
     let target = Target::Token("token".to_string());
-    let msg = MessageBuilder::new(target.clone()).finalize();
 
-    assert_eq!(msg.notification, None);
+    let nm = Notification {
+        title: None,
+        body: None,
+        image: None,
+    };
 
-    let nm = NotificationBuilder::new().finalize();
-
-    let mut builder = MessageBuilder::new(target);
-    builder.notification(nm);
+    let builder = Message {
+        target: target.clone(),
+        data: None,
+        notification: Some(nm),
+        android: None,
+        webpush: None,
+        apns: None,
+        fcm_options: None,
+    };
     let msg = builder.finalize();
 
-    assert_ne!(msg.notification, None);
+    assert_eq!(msg.notification.is_none(), false);
 }

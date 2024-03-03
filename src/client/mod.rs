@@ -109,7 +109,7 @@ impl Client {
             Err(err) => return Err(err.to_string()),
         };
 
-        let token_no_bearer = access_token.split(" ").collect::<Vec<&str>>()[1];
+        let token_no_bearer = access_token.split(char::is_whitespace).collect::<Vec<&str>>()[1];
 
         Ok(token_no_bearer.to_string())
     }
@@ -139,11 +139,6 @@ impl Client {
             .bearer_auth(auth_token)
             .body(Body::from(payload))
             .build()?;
-
-        // print the body
-        let body = request.body().unwrap();
-        let body = std::str::from_utf8(body.as_bytes().unwrap()).unwrap();
-        println!("body: {}", body);
 
         let response = self.http_client.execute(request).await?;
 

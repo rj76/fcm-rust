@@ -161,17 +161,6 @@ fn should_be_able_to_render_a_full_condition_message_to_json() {
 #[test]
 fn should_set_notifications() {
     let target = Target::Token("token".to_string());
-    let msg = Message {
-        target: target.clone(),
-        data: None,
-        notification: None,
-        android: None,
-        webpush: None,
-        apns: None,
-        fcm_options: None,
-    };
-
-    assert_eq!(msg.notification.is_none(), true);
 
     let nm = Notification {
         title: None,

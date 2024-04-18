@@ -20,7 +20,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         ap.parse_args_or_exit();
     }
 
-    let client = Client::new();
+    let client = Client::new().unwrap();
 
     let data = json!({
         "key": "value",
@@ -29,8 +29,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let builder = Message {
         data: Some(data),
         notification: Some(Notification {
-            title: Some("I'm high".to_string()),
-            body: Some(format!("it's {}", chrono::Utc::now())),
+            title: Some("Test FCM notification".to_string()),
+            body: Some(format!("It's {}", chrono::Utc::now())),
             ..Default::default()
         }),
         target: Target::Token(device_token),
@@ -40,8 +40,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         android: Some(AndroidConfig {
             priority: Some(fcm::AndroidMessagePriority::High),
             notification: Some(AndroidNotification {
-                title: Some("I'm Android high".to_string()),
-                body: Some(format!("Hi Android, it's {}", chrono::Utc::now())),
+                title: Some("Android: Test FCM notification".to_string()),
+                body: Some(format!("Android: It's {}", chrono::Utc::now())),
                 ..Default::default()
             }),
             ..Default::default()

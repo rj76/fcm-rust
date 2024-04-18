@@ -5,7 +5,7 @@ authors = [
   "Suvish Varghese Thoovamalayil <vishy1618@gmail.com>",
   "panicbit <panicbit.dev@gmail.com>",
   "Julius de Bruijn <pimeys@gmail.com>",
-  "Richard Jansen <demo_epso@proton.me>"
+  "Richard Jansen <demo_epso@proton.me>",
 ]
 description = "An API to talk to FCM (Firebase Cloud Messaging) in Rust"
 license = "MIT"
@@ -16,20 +16,21 @@ keywords = ["fcm", "firebase", "notification"]
 edition = "2018"
 
 [features]
-default = ["native-tls"]
+default = ["native-tls", "dotenv"]
 native-tls = ["reqwest/native-tls"]
 rustls = ["reqwest/rustls-tls"]
 vendored-tls = ["reqwest/native-tls-vendored"]
+dotenv = ["dep:dotenv"]
 
 [dependencies]
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", features = ["preserve_order"] }
 erased-serde = "0.4.1"
-reqwest = {version = "0.11.0", features = ["json"], default-features=false}
+reqwest = { version = "0.11.0", features = ["json"], default-features = false }
 chrono = "0.4"
 log = "0.4"
-gauth = "0.7.0"
-dotenv = "0.15.0"
+gauth = { git = "https://github.com/WalletConnect/gauth-rs.git", branch = "feat/key-not-from-file" }
+dotenv = { version = "0.15.0", optional = true }
 
 [dev-dependencies]
 argparse = "0.2.1"

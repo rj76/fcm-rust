@@ -1,6 +1,7 @@
 pub use chrono::{DateTime, Duration, FixedOffset};
+use gauth::serv_account::errors::ServiceAccountError;
 use serde::Deserialize;
-use std::{error::Error, fmt, str::FromStr};
+use std::{error::Error as StdError, fmt, str::FromStr};
 
 /// A description of what went wrong with the push notification.
 /// Referred from [Firebase documentation](https://firebase.google.com/docs/cloud-messaging/http-server-ref#table9)
@@ -92,7 +93,7 @@ pub enum ErrorReason {
 }
 
 #[derive(Deserialize, Debug)]
-pub struct FcmResponse {
+pub struct Response {
     pub message_id: Option<u64>,
     pub error: Option<ErrorReason>,
     pub multicast_id: Option<i64>,
@@ -111,8 +112,8 @@ pub struct MessageResult {
 
 /// Fatal errors. Referred from [Firebase
 /// documentation](https://firebase.google.com/docs/cloud-messaging/http-server-ref#table9)
-#[derive(PartialEq, Debug)]
-pub enum FcmError {
+#[derive(Debug)]
+pub enum Error {
     /// The sender account used to send a message couldn't be authenticated. Possible causes are:
     ///
     /// Authorization header missing or with invalid syntax in HTTP request.
@@ -145,26 +146,36 @@ pub enum FcmError {
     /// Senders that cause problems risk being blacklisted.
     ServerError(Option<RetryAfter>),
 
-    ProjectIdError(String),
+    AccessToken(ServiceAccountError),
 
-    AuthToken(String),
+    #[cfg(feature = "dotenv")]
+    DotEnv(dotenv::Error),
+    #[cfg(feature = "dotenv")]
+    ReadFile(std::io::Error),
+    #[cfg(feature = "dotenv")]
+    ParseFile(serde_json::Error),
 }
 
-impl Error for FcmError {}
+impl StdError for Error {}
 
-impl fmt::Display for FcmError {
+impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            FcmError::Unauthorized => write!(f, "authorization header missing or with invalid syntax in HTTP request"),
-            FcmError::InvalidMessage(ref s) => write!(f, "invalid message {}", s),
-            FcmError::ServerError(_) => write!(f, "the server couldn't process the request"),
-            FcmError::ProjectIdError(error) => write!(f, "error getting project_id: {error}"),
-            FcmError::AuthToken(error) => write!(f, "error getting auth token: {error}"),
+            Error::Unauthorized => write!(f, "authorization header missing or with invalid syntax in HTTP request"),
+            Error::InvalidMessage(ref s) => write!(f, "invalid message {}", s),
+            Error::ServerError(_) => write!(f, "the server couldn't process the request"),
+            Error::AccessToken(error) => write!(f, "error getting access token: {error}"),
+            #[cfg(feature = "dotenv")]
+            Error::DotEnv(error) => write!(f, "error getting dotenv variable: {error}"),
+            #[cfg(feature = "dotenv")]
+            Error::ReadFile(error) => write!(f, "error reading file from dotenv variable: {error}"),
+            #[cfg(feature = "dotenv")]
+            Error::ParseFile(error) => write!(f, "error parsing file from dotenv variable: {error}"),
         }
     }
 }
 
-impl From<reqwest::Error> for FcmError {
+impl From<reqwest::Error> for Error {
     fn from(_: reqwest::Error) -> Self {
         Self::ServerError(None)
     }
@@ -225,11 +236,11 @@ mod tests {
             });
 
             let response_string = serde_json::to_string(&response_data).unwrap();
-            let fcm_response: FcmResponse = serde_json::from_str(&response_string).unwrap();
+            let fcm_response: Response = serde_json::from_str(&response_string).unwrap();
 
-            assert_eq!(Some(error_enum.clone()), fcm_response.results.unwrap()[0].error,);
+            assert_eq!(Some(error_enum), fcm_response.results.unwrap()[0].error);
 
-            assert_eq!(Some(error_enum), fcm_response.error,)
+            assert_eq!(Some(error_enum), fcm_response.error)
         }
     }
 

@@ -236,7 +236,7 @@ mod tests {
             });
 
             let response_string = serde_json::to_string(&response_data).unwrap();
-            let fcm_response: Response = serde_json::from_str(&response_string).unwrap();
+            let fcm_response = serde_json::from_str::<Response>(&response_string).unwrap();
 
             assert_eq!(Some(error_enum), fcm_response.results.unwrap()[0].error);
 

@@ -29,7 +29,7 @@ erased-serde = "0.4.1"
 reqwest = { version = "0.11.0", features = ["json"], default-features = false }
 chrono = "0.4"
 log = "0.4"
-gauth = { git = "https://github.com/WalletConnect/gauth-rs.git", branch = "feat/key-not-from-file" }
+gauth = { git = "https://github.com/WalletConnect/gauth-rs.git", branch = "feat/key-not-from-file" } # TODO switch to tagged version once released
 dotenv = { version = "0.15.0", optional = true }
 
 [dev-dependencies]

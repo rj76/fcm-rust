@@ -9,7 +9,7 @@ use reqwest::{Client as HttpClient, StatusCode};
 use serde::Serialize;
 use std::sync::Arc;
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 /// An async client for sending the notification payload.
 pub struct Client {
     http_client: HttpClient,

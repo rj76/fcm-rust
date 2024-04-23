@@ -3,21 +3,27 @@ pub(crate) mod response;
 use crate::client::response::{Error, ErrorReason, Response, RetryAfter};
 use crate::{Message, MessageInternal};
 pub use gauth;
+use gauth::serv_account::errors::ServiceAccountError;
 use gauth::serv_account::{ServiceAccount, ServiceAccountBuilder, ServiceAccountKey};
 use reqwest::header::RETRY_AFTER;
 use reqwest::{Client as HttpClient, StatusCode};
 use serde::Serialize;
 use std::sync::Arc;
 
+const FIREBASE_MESSAGING_SCOPE: &str = "https://www.googleapis.com/auth/firebase.messaging";
+#[cfg(feature = "dotenv")]
+const ENV_VAR_FILE: &str = "GOOGLE_APPLICATION_CREDENTIALS";
+
+/// An FCM v1 client that can be used to send messages to the FCM service. Can be constructed from a ServiceAccountKey using the `Client::builder()` method. The convenience methods `from_key()` and `new()` are also available.
+///
+/// Upon creation, the client will validate the provided ServiceAccountKey by requesting an initial access token and will return an error if invalid.
 #[derive(Debug, Clone)]
-/// An async client for sending the notification payload.
 pub struct Client {
     http_client: HttpClient,
     service_account: Arc<ServiceAccount>,
     project_id: Arc<String>,
 }
 
-// will be used to wrap the message in a "message" field
 #[derive(Serialize)]
 struct MessageWrapper<'a> {
     #[serde(rename = "message")]
@@ -35,17 +41,17 @@ impl Client {
         ClientBuilder::new()
     }
 
-    /// Get a new instance of Client.
+    /// Create a new Client using credentials from a file path specified in the GOOGLE_APPLICATION_CREDENTIALS environment variable.
     #[cfg(feature = "dotenv")]
-    pub fn new() -> Result<Client, Error> {
-        let path = dotenv::var("GOOGLE_APPLICATION_CREDENTIALS").map_err(Error::DotEnv)?;
+    pub async fn new() -> Result<Client, Error> {
+        let path = dotenv::var(ENV_VAR_FILE).map_err(Error::DotEnv)?;
         let bytes = std::fs::read(path).map_err(Error::ReadFile)?;
         let key = serde_json::from_slice::<ServiceAccountKey>(&bytes).map_err(Error::ParseFile)?;
-        Ok(Self::from_key(key))
+        Self::from_key(key).await.map_err(Error::AccessToken)
     }
 
-    pub fn from_key(key: ServiceAccountKey) -> Client {
-        Self::builder().build(key)
+    pub async fn from_key(key: ServiceAccountKey) -> Result<Client, ServiceAccountError> {
+        Self::builder().build(key).await
     }
 
     pub async fn send(&self, message: Message) -> Result<Response, Error> {
@@ -112,20 +118,23 @@ impl ClientBuilder {
         self
     }
 
-    pub fn build(self, key: ServiceAccountKey) -> Client {
+    pub async fn build(self, key: ServiceAccountKey) -> Result<Client, ServiceAccountError> {
         let http_client = self.http_client.unwrap_or_default();
         let project_id = key.project_id.clone();
         let service_account = ServiceAccountBuilder::new()
             .key(key)
-            .scopes(vec!["https://www.googleapis.com/auth/firebase.messaging"])
+            .scopes(vec![FIREBASE_MESSAGING_SCOPE])
             .http_client(http_client.clone())
             .build();
 
-        Client {
+        // Validate the key by requesting initial access token
+        let _access_token = service_account.access_token().await?;
+
+        Ok(Client {
             http_client,
             project_id: Arc::new(project_id),
             service_account: Arc::new(service_account),
-        }
+        })
     }
 }
 

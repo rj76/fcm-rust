@@ -71,19 +71,19 @@ pub(crate) struct MessageInternal {
 /// https://firebase.google.com/docs/reference/fcm/rest/v1/projects.messages?authuser=0#resource:-message
 #[derive(Debug)]
 pub struct Message {
-    /// Arbitrary key/value payload, which must be UTF-8 encoded.
+    /// Arbitrary key/value payload, which must be UTF-8 encoded. Values must be strings.
     pub data: Option<Value>,
     /// Basic notification template to use across all platforms.
     pub notification: Option<Notification>,
-    /// Android specific options for messages sent through FCM connection server.
-    pub target: Target,
-    /// Webpush protocol options.
-    pub android: Option<AndroidConfig>,
-    /// Apple Push Notification Service specific options.
-    pub webpush: Option<WebpushConfig>,
-    /// Template for FCM SDK feature options to use across all platforms.
-    pub apns: Option<ApnsConfig>,
     /// Target to send a message to.
+    pub target: Target,
+    /// Android specific options for messages sent through FCM connection server.
+    pub android: Option<AndroidConfig>,
+    /// Webpush protocol options.
+    pub webpush: Option<WebpushConfig>,
+    /// Apple Push Notification Service specific options.
+    pub apns: Option<ApnsConfig>,
+    /// Template for FCM SDK feature options to use across all platforms.
     pub fcm_options: Option<FcmOptions>,
 }
 

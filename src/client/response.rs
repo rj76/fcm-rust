@@ -1,7 +1,8 @@
 pub use chrono::{DateTime, Duration, FixedOffset};
-use gauth::serv_account::errors::ServiceAccountError;
+use gauth::serv_account::errors::{GetAccessTokenError, ServiceAccountBuildError};
 use serde::Deserialize;
-use std::{error::Error as StdError, fmt, str::FromStr};
+use std::{num::ParseIntError, str::FromStr};
+use thiserror::Error;
 
 /// A description of what went wrong with the push notification.
 /// Referred from [Firebase documentation](https://firebase.google.com/docs/cloud-messaging/http-server-ref#table9)
@@ -112,73 +113,41 @@ pub struct MessageResult {
 
 /// Fatal errors. Referred from [Firebase
 /// documentation](https://firebase.google.com/docs/cloud-messaging/http-server-ref#table9)
-#[derive(Debug)]
-pub enum Error {
-    /// The sender account used to send a message couldn't be authenticated. Possible causes are:
-    ///
-    /// Authorization header missing or with invalid syntax in HTTP request.
-    ///
-    /// * The Firebase project that the specified server key belongs to is
-    ///   incorrect.
-    /// * Legacy server keys only—the request originated from a server not
-    ///   whitelisted in the Server key IPs.
-    ///
-    /// Check that the token you're sending inside the Authentication header is
-    /// the correct Server key associated with your project. See Checking the
-    /// validity of a Server key for details. If you are using a legacy server
-    /// key, you're recommended to upgrade to a new key that has no IP
-    /// restrictions.
-    Unauthorized,
+#[derive(Error, Debug)]
+pub enum SendError {
+    #[error("Error getting access token: {0}")]
+    AccessToken(GetAccessTokenError),
 
-    /// Check that the JSON message is properly formatted and contains valid
-    /// fields (for instance, making sure the right data type is passed in).
-    InvalidMessage(String),
+    #[error("Error sending message: {0}")]
+    HttpRequest(reqwest::Error),
+    // TODO retry after error
 
-    /// The server couldn't process the request. Retry the same request, but you must:
-    ///
-    /// * Honor the [RetryAfter](enum.RetryAfter.html) value if included.
-    /// * Implement exponential back-off in your retry mechanism. (e.g. if you
-    ///   waited one second before the first retry, wait at least two second
-    ///   before the next one, then 4 seconds and so on). If you're sending
-    ///   multiple messages, delay each one independently by an additional random
-    ///   amount to avoid issuing a new request for all messages at the same time.
-    ///
-    /// Senders that cause problems risk being blacklisted.
-    ServerError(Option<RetryAfter>),
+    // TODO error variant for invalid authentication
+}
 
-    AccessToken(ServiceAccountError),
-
-    #[cfg(feature = "dotenv")]
+#[cfg(feature = "dotenv")]
+#[derive(Error, Debug)]
+pub enum DotEnvClientBuildError {
+    #[error("Error getting dotenv variable: {0}")]
     DotEnv(dotenv::Error),
-    #[cfg(feature = "dotenv")]
+
+    #[error("Error reading file from dotenv variable: {0}")]
     ReadFile(std::io::Error),
-    #[cfg(feature = "dotenv")]
+
+    #[error("Error parsing file from dotenv variable: {0}")]
     ParseFile(serde_json::Error),
+
+    #[error("Error building client: {0}")]
+    ClientBuild(ClientBuildError),
 }
 
-impl StdError for Error {}
+#[derive(Error, Debug)]
+pub enum ClientBuildError {
+    #[error("Error initializing service account: {0}")]
+    ServiceAccountBuild(ServiceAccountBuildError),
 
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Error::Unauthorized => write!(f, "authorization header missing or with invalid syntax in HTTP request"),
-            Error::InvalidMessage(ref s) => write!(f, "invalid message {}", s),
-            Error::ServerError(_) => write!(f, "the server couldn't process the request"),
-            Error::AccessToken(error) => write!(f, "error getting access token: {error}"),
-            #[cfg(feature = "dotenv")]
-            Error::DotEnv(error) => write!(f, "error getting dotenv variable: {error}"),
-            #[cfg(feature = "dotenv")]
-            Error::ReadFile(error) => write!(f, "error reading file from dotenv variable: {error}"),
-            #[cfg(feature = "dotenv")]
-            Error::ParseFile(error) => write!(f, "error parsing file from dotenv variable: {error}"),
-        }
-    }
-}
-
-impl From<reqwest::Error> for Error {
-    fn from(_: reqwest::Error) -> Self {
-        Self::ServerError(None)
-    }
+    #[error("Error getting initial access token: {0}")]
+    GetAccessToken(GetAccessTokenError),
 }
 
 #[derive(PartialEq, Debug)]
@@ -190,15 +159,25 @@ pub enum RetryAfter {
     DateTime(DateTime<FixedOffset>),
 }
 
+#[derive(Error, Debug)]
+pub enum RetryAfterParseError {
+    #[error("Error parsing Retry-After header as int: {0}")]
+    IntParse(ParseIntError),
+
+    #[error("Error parsing Retry-After header as DateTime: {0}")]
+    DateParse(chrono::format::ParseError),
+}
+
 impl FromStr for RetryAfter {
-    type Err = crate::Error;
+    type Err = RetryAfterParseError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         s.parse::<i64>()
+            .map_err(RetryAfterParseError::IntParse)
             .map(Duration::seconds)
             .map(RetryAfter::Delay)
             .or_else(|_| DateTime::parse_from_rfc2822(s).map(RetryAfter::DateTime))
-            .map_err(|e| crate::Error::InvalidMessage(format!("{}", e)))
+            .map_err(RetryAfterParseError::DateParse)
     }
 }
 

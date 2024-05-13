@@ -20,7 +20,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         ap.parse_args_or_exit();
     }
 
-    let client = Client::new().unwrap();
+    let client = Client::new().await.unwrap();
 
     let data = json!({
         "key": "value",

@@ -120,6 +120,13 @@ pub enum SendError {
 
     #[error("Error sending message: {0}")]
     HttpRequest(reqwest::Error),
+
+    #[error("Unknown response")]
+    UnknownHttpResponse {
+        status: reqwest::StatusCode,
+        body: reqwest::Result<String>,
+    }
+
     // TODO retry after error
 
     // TODO error variant for invalid authentication

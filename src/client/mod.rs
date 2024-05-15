@@ -105,7 +105,10 @@ impl Client {
             // }
             // status if status.is_server_error() => Err(Error::ServerError(retry_after)),
             // _ => Err(Error::InvalidMessage("Unknown Error".to_string())),
-            _ => Err(SendError::HttpRequest(response.error_for_status().unwrap_err())), // TODO
+            _ => Err(SendError::UnknownHttpResponse {
+                status: response_status,
+                body: response.text().await,
+            }),
         }
     }
 }

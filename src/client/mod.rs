@@ -1,24 +1,30 @@
 pub(crate) mod response;
 
-use crate::client::response::{ErrorReason, FcmError, FcmResponse, RetryAfter};
-use crate::{Message, MessageInternal};
-use gauth::serv_account::ServiceAccount;
-use reqwest::header::RETRY_AFTER;
-use reqwest::{Body, StatusCode};
+use crate::client::response::Response;
+use crate::{ClientBuildError, Message, MessageInternal, SendError};
+pub use gauth;
+use gauth::serv_account::{ServiceAccount, ServiceAccountBuilder, ServiceAccountKey};
+use reqwest::{Client as HttpClient, StatusCode};
 use serde::Serialize;
+use std::sync::Arc;
 
-/// An async client for sending the notification payload.
+#[cfg(feature = "dotenv")]
+use crate::DotEnvClientBuildError;
+
+const FIREBASE_MESSAGING_SCOPE: &str = "https://www.googleapis.com/auth/firebase.messaging";
+#[cfg(feature = "dotenv")]
+const ENV_VAR_FILE: &str = "GOOGLE_APPLICATION_CREDENTIALS";
+
+/// An FCM v1 client that can be used to send messages to the FCM service. Can be constructed from a ServiceAccountKey using the `Client::builder()` method. The convenience methods `from_key()` and `new()` are also available.
+///
+/// Upon creation, the client will validate the provided ServiceAccountKey by requesting an initial access token and will return an error if invalid.
+#[derive(Debug, Clone)]
 pub struct Client {
-    http_client: reqwest::Client,
+    http_client: HttpClient,
+    service_account: Arc<ServiceAccount>,
+    project_id: Arc<String>,
 }
 
-impl Default for Client {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-// will be used to wrap the message in a "message" field
 #[derive(Serialize)]
 struct MessageWrapper<'a> {
     #[serde(rename = "message")]
@@ -32,141 +38,121 @@ impl MessageWrapper<'_> {
 }
 
 impl Client {
-    /// Get a new instance of Client.
-    pub fn new() -> Client {
-        let http_client = reqwest::ClientBuilder::new()
-            .pool_max_idle_per_host(usize::MAX)
-            .build()
-            .unwrap();
-
-        Client { http_client }
+    pub fn builder() -> ClientBuilder {
+        ClientBuilder::new()
     }
 
-    fn get_service_key_file_name(&self) -> Result<String, String> {
-        let key_path = match dotenv::var("GOOGLE_APPLICATION_CREDENTIALS") {
-            Ok(key_path) => key_path,
-            Err(err) => return Err(err.to_string()),
-        };
-
-        Ok(key_path)
+    /// Create a new Client using credentials from a file path specified in the GOOGLE_APPLICATION_CREDENTIALS environment variable.
+    #[cfg(feature = "dotenv")]
+    pub async fn new() -> Result<Client, DotEnvClientBuildError> {
+        let path = dotenv::var(ENV_VAR_FILE).map_err(DotEnvClientBuildError::DotEnv)?;
+        let bytes = std::fs::read(path).map_err(DotEnvClientBuildError::ReadFile)?;
+        let key = serde_json::from_slice::<ServiceAccountKey>(&bytes).map_err(DotEnvClientBuildError::ParseFile)?;
+        Self::from_key(key).await.map_err(DotEnvClientBuildError::ClientBuild)
     }
 
-    fn read_service_key_file(&self) -> Result<String, String> {
-        let key_path = self.get_service_key_file_name()?;
-
-        let private_key_content = match std::fs::read(key_path) {
-            Ok(content) => content,
-            Err(err) => return Err(err.to_string()),
-        };
-
-        Ok(String::from_utf8(private_key_content).unwrap())
+    pub async fn from_key(key: ServiceAccountKey) -> Result<Client, ClientBuildError> {
+        Self::builder().build(key).await
     }
 
-    fn read_service_key_file_json(&self) -> Result<serde_json::Value, String> {
-        let file_content = match self.read_service_key_file() {
-            Ok(content) => content,
-            Err(err) => return Err(err),
-        };
-
-        let json_content: serde_json::Value = match serde_json::from_str(&file_content) {
-            Ok(json) => json,
-            Err(err) => return Err(err.to_string()),
-        };
-
-        Ok(json_content)
-    }
-
-    fn get_project_id(&self) -> Result<String, String> {
-        let json_content = match self.read_service_key_file_json() {
-            Ok(json) => json,
-            Err(err) => return Err(err),
-        };
-
-        let project_id = match json_content["project_id"].as_str() {
-            Some(project_id) => project_id,
-            None => return Err("could not get project_id".to_string()),
-        };
-
-        Ok(project_id.to_string())
-    }
-
-    async fn get_auth_token(&self) -> Result<String, String> {
-        let tkn = match self.access_token().await {
-            Ok(tkn) => tkn,
-            Err(_) => return Err("could not get access token".to_string()),
-        };
-
-        Ok(tkn)
-    }
-
-    async fn access_token(&self) -> Result<String, String> {
-        let scopes = vec!["https://www.googleapis.com/auth/firebase.messaging"];
-        let key_path = self.get_service_key_file_name()?;
-
-        let mut service_account = ServiceAccount::from_file(&key_path, scopes);
-        let access_token = match service_account.access_token().await {
-            Ok(access_token) => access_token,
-            Err(err) => return Err(err.to_string()),
-        };
-
-        let token_no_bearer = access_token.split(char::is_whitespace).collect::<Vec<&str>>()[1];
-
-        Ok(token_no_bearer.to_string())
-    }
-
-    pub async fn send(&self, message: Message) -> Result<FcmResponse, FcmError> {
+    pub async fn send(&self, message: Message) -> Result<Response, SendError> {
         let fin = message.finalize();
         let wrapper = MessageWrapper::new(&fin);
-        let payload = serde_json::to_vec(&wrapper).unwrap();
 
-        let project_id = match self.get_project_id() {
-            Ok(project_id) => project_id,
-            Err(err) => return Err(FcmError::ProjectIdError(err)),
-        };
-
-        let auth_token = match self.get_auth_token().await {
-            Ok(tkn) => tkn,
-            Err(err) => return Err(FcmError::ProjectIdError(err)),
-        };
+        let access_token = self
+            .service_account
+            .access_token()
+            .await
+            .map_err(SendError::AccessToken)?;
 
         // https://firebase.google.com/docs/reference/fcm/rest/v1/projects.messages/send
-        let url = format!("https://fcm.googleapis.com/v1/projects/{}/messages:send", project_id);
+        let url = format!(
+            "https://fcm.googleapis.com/v1/projects/{}/messages:send",
+            self.project_id
+        );
 
-        let request = self
+        let response = self
             .http_client
             .post(&url)
-            .header("Content-Type", "application/json")
-            .bearer_auth(auth_token)
-            .body(Body::from(payload))
-            .build()?;
-
-        let response = self.http_client.execute(request).await?;
+            .bearer_auth(access_token.bearer_token)
+            .json(&wrapper)
+            .send()
+            .await
+            .map_err(SendError::HttpRequest)?;
 
         let response_status = response.status();
 
-        let retry_after = response
-            .headers()
-            .get(RETRY_AFTER)
-            .and_then(|ra| ra.to_str().ok())
-            .and_then(|ra| ra.parse::<RetryAfter>().ok());
+        // let retry_after = response
+        //     .headers()
+        //     .get(RETRY_AFTER)
+        //     .and_then(|ra| ra.to_str().ok())
+        //     .and_then(|ra| ra.parse::<RetryAfter>().ok());
 
         match response_status {
             StatusCode::OK => {
-                let fcm_response: FcmResponse = response.json().await.unwrap();
-
-                match fcm_response.error {
-                    Some(ErrorReason::Unavailable) => Err(FcmError::ServerError(retry_after)),
-                    Some(ErrorReason::InternalServerError) => Err(FcmError::ServerError(retry_after)),
-                    _ => Ok(fcm_response),
-                }
+                let fcm_response = response.json::<Response>().await.unwrap();
+                // match fcm_response.error {
+                //     // Some(ErrorReason::Unavailable) => Err(Error::ServerError(retry_after)),
+                //     // Some(ErrorReason::InternalServerError) => Err(Error::ServerError(retry_after)),
+                //     _ => Ok(fcm_response),
+                // }
+                Ok(fcm_response)
             }
-            StatusCode::UNAUTHORIZED => Err(FcmError::Unauthorized),
-            StatusCode::BAD_REQUEST => {
-                let body = response.text().await.unwrap();
-                Err(FcmError::InvalidMessage(format!("Bad Request ({body}")))
-            }
-            status if status.is_server_error() => Err(FcmError::ServerError(retry_after)),
-            _ => Err(FcmError::InvalidMessage("Unknown Error".to_string())),
+            // StatusCode::UNAUTHORIZED => Err(Error::Unauthorized),
+            // StatusCode::BAD_REQUEST => {
+            //     let body = response.text().await.unwrap();
+            //     Err(Error::InvalidMessage(format!("Bad Request ({body}")))
+            // }
+            // status if status.is_server_error() => Err(Error::ServerError(retry_after)),
+            // _ => Err(Error::InvalidMessage("Unknown Error".to_string())),
+            _ => Err(SendError::UnknownHttpResponse {
+                status: response_status,
+                body: response.text().await,
+            }),
         }
+    }
+}
+
+pub struct ClientBuilder {
+    http_client: Option<HttpClient>,
+}
+
+impl ClientBuilder {
+    pub fn new() -> Self {
+        Self { http_client: None }
+    }
+
+    pub fn http_client(mut self, http_client: HttpClient) -> Self {
+        self.http_client = Some(http_client);
+        self
+    }
+
+    pub async fn build(self, key: ServiceAccountKey) -> Result<Client, ClientBuildError> {
+        let http_client = self.http_client.unwrap_or_default();
+        let project_id = key.project_id.clone();
+        let service_account = ServiceAccountBuilder::new()
+            .key(key)
+            .scopes(vec![FIREBASE_MESSAGING_SCOPE])
+            .http_client(http_client.clone())
+            .build()
+            .map_err(ClientBuildError::ServiceAccountBuild)?;
+
+        // Validate the key by requesting initial access token
+        let _access_token = service_account
+            .access_token()
+            .await
+            .map_err(ClientBuildError::GetAccessToken)?;
+
+        Ok(Client {
+            http_client,
+            project_id: Arc::new(project_id),
+            service_account: Arc::new(service_account),
+        })
+    }
+}
+
+impl Default for ClientBuilder {
+    fn default() -> Self {
+        Self::new()
     }
 }

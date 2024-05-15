@@ -47,7 +47,7 @@ fn should_add_custom_data_to_the_payload() {
     let data = json!({ "foo": "bar", "bar": false });
 
     let builder = Message {
-        target: target,
+        target,
         data: Some(data),
         notification: None,
         android: None,
@@ -179,5 +179,5 @@ fn should_set_notifications() {
     };
     let msg = builder.finalize();
 
-    assert_eq!(msg.notification.is_none(), false);
+    assert!(msg.notification.is_some());
 }

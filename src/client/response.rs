@@ -1,6 +1,8 @@
 pub use chrono::{DateTime, Duration, FixedOffset};
+use gauth::serv_account::errors::{GetAccessTokenError, ServiceAccountBuildError};
 use serde::Deserialize;
-use std::{error::Error, fmt, str::FromStr};
+use std::{num::ParseIntError, str::FromStr};
+use thiserror::Error;
 
 /// A description of what went wrong with the push notification.
 /// Referred from [Firebase documentation](https://firebase.google.com/docs/cloud-messaging/http-server-ref#table9)
@@ -92,7 +94,7 @@ pub enum ErrorReason {
 }
 
 #[derive(Deserialize, Debug)]
-pub struct FcmResponse {
+pub struct Response {
     pub message_id: Option<u64>,
     pub error: Option<ErrorReason>,
     pub multicast_id: Option<i64>,
@@ -111,63 +113,48 @@ pub struct MessageResult {
 
 /// Fatal errors. Referred from [Firebase
 /// documentation](https://firebase.google.com/docs/cloud-messaging/http-server-ref#table9)
-#[derive(PartialEq, Debug)]
-pub enum FcmError {
-    /// The sender account used to send a message couldn't be authenticated. Possible causes are:
-    ///
-    /// Authorization header missing or with invalid syntax in HTTP request.
-    ///
-    /// * The Firebase project that the specified server key belongs to is
-    ///   incorrect.
-    /// * Legacy server keys only—the request originated from a server not
-    ///   whitelisted in the Server key IPs.
-    ///
-    /// Check that the token you're sending inside the Authentication header is
-    /// the correct Server key associated with your project. See Checking the
-    /// validity of a Server key for details. If you are using a legacy server
-    /// key, you're recommended to upgrade to a new key that has no IP
-    /// restrictions.
-    Unauthorized,
+#[derive(Error, Debug)]
+pub enum SendError {
+    #[error("Error getting access token: {0}")]
+    AccessToken(GetAccessTokenError),
 
-    /// Check that the JSON message is properly formatted and contains valid
-    /// fields (for instance, making sure the right data type is passed in).
-    InvalidMessage(String),
+    #[error("Error sending message: {0}")]
+    HttpRequest(reqwest::Error),
 
-    /// The server couldn't process the request. Retry the same request, but you must:
-    ///
-    /// * Honor the [RetryAfter](enum.RetryAfter.html) value if included.
-    /// * Implement exponential back-off in your retry mechanism. (e.g. if you
-    ///   waited one second before the first retry, wait at least two second
-    ///   before the next one, then 4 seconds and so on). If you're sending
-    ///   multiple messages, delay each one independently by an additional random
-    ///   amount to avoid issuing a new request for all messages at the same time.
-    ///
-    /// Senders that cause problems risk being blacklisted.
-    ServerError(Option<RetryAfter>),
+    #[error("Unknown response")]
+    UnknownHttpResponse {
+        status: reqwest::StatusCode,
+        body: reqwest::Result<String>,
+    }
 
-    ProjectIdError(String),
+    // TODO retry after error
 
-    AuthToken(String),
+    // TODO error variant for invalid authentication
 }
 
-impl Error for FcmError {}
+#[cfg(feature = "dotenv")]
+#[derive(Error, Debug)]
+pub enum DotEnvClientBuildError {
+    #[error("Error getting dotenv variable: {0}")]
+    DotEnv(dotenv::Error),
 
-impl fmt::Display for FcmError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            FcmError::Unauthorized => write!(f, "authorization header missing or with invalid syntax in HTTP request"),
-            FcmError::InvalidMessage(ref s) => write!(f, "invalid message {}", s),
-            FcmError::ServerError(_) => write!(f, "the server couldn't process the request"),
-            FcmError::ProjectIdError(error) => write!(f, "error getting project_id: {error}"),
-            FcmError::AuthToken(error) => write!(f, "error getting auth token: {error}"),
-        }
-    }
+    #[error("Error reading file from dotenv variable: {0}")]
+    ReadFile(std::io::Error),
+
+    #[error("Error parsing file from dotenv variable: {0}")]
+    ParseFile(serde_json::Error),
+
+    #[error("Error building client: {0}")]
+    ClientBuild(ClientBuildError),
 }
 
-impl From<reqwest::Error> for FcmError {
-    fn from(_: reqwest::Error) -> Self {
-        Self::ServerError(None)
-    }
+#[derive(Error, Debug)]
+pub enum ClientBuildError {
+    #[error("Error initializing service account: {0}")]
+    ServiceAccountBuild(ServiceAccountBuildError),
+
+    #[error("Error getting initial access token: {0}")]
+    GetAccessToken(GetAccessTokenError),
 }
 
 #[derive(PartialEq, Debug)]
@@ -179,15 +166,25 @@ pub enum RetryAfter {
     DateTime(DateTime<FixedOffset>),
 }
 
+#[derive(Error, Debug)]
+pub enum RetryAfterParseError {
+    #[error("Error parsing Retry-After header as int: {0}")]
+    IntParse(ParseIntError),
+
+    #[error("Error parsing Retry-After header as DateTime: {0}")]
+    DateParse(chrono::format::ParseError),
+}
+
 impl FromStr for RetryAfter {
-    type Err = crate::Error;
+    type Err = RetryAfterParseError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         s.parse::<i64>()
+            .map_err(RetryAfterParseError::IntParse)
             .map(Duration::seconds)
             .map(RetryAfter::Delay)
             .or_else(|_| DateTime::parse_from_rfc2822(s).map(RetryAfter::DateTime))
-            .map_err(|e| crate::Error::InvalidMessage(format!("{}", e)))
+            .map_err(RetryAfterParseError::DateParse)
     }
 }
 
@@ -225,11 +222,11 @@ mod tests {
             });
 
             let response_string = serde_json::to_string(&response_data).unwrap();
-            let fcm_response: FcmResponse = serde_json::from_str(&response_string).unwrap();
+            let fcm_response = serde_json::from_str::<Response>(&response_string).unwrap();
 
-            assert_eq!(Some(error_enum.clone()), fcm_response.results.unwrap()[0].error,);
+            assert_eq!(Some(error_enum), fcm_response.results.unwrap()[0].error);
 
-            assert_eq!(Some(error_enum), fcm_response.error,)
+            assert_eq!(Some(error_enum), fcm_response.error)
         }
     }
 

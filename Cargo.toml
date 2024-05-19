@@ -24,10 +24,8 @@ vendored-tls = ["reqwest/native-tls-vendored"]
 [dependencies]
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", features = ["preserve_order"] }
-erased-serde = "0.4.1"
 reqwest = {version = "0.11.0", features = ["json"], default-features=false}
 chrono = "0.4"
-log = "0.4"
 gauth = "0.7.0"
 dotenv = "0.15.0"
 

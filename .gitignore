@@ -15,7 +15,6 @@ Cargo.lock
 
 .DS_Store
 
-.direnv
 .idea/
 
 # local env files

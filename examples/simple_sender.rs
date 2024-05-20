@@ -12,15 +12,24 @@ use serde_json::json;
 struct CliArgs {
     #[arg(long)]
     device_token: String,
+    /// Set path to the service account key JSON file. Default is to use
+    /// path from the `GOOGLE_APPLICATION_CREDENTIALS` environment variable
+    /// (which can be also located in `.env` file).
     #[arg(long, value_name = "FILE")]
-    service_account_key_path: PathBuf,
+    service_account_key_path: Option<PathBuf>,
 }
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let args = CliArgs::parse();
-    let client = FcmClient::builder(args.service_account_key_path)
-        .build()
+    let builder = FcmClient::builder();
+    let builder = if let Some(path) = args.service_account_key_path {
+        builder.service_account_key_json_path(path)
+    } else {
+        builder
+    };
+
+    let client = builder.build()
         .await
         .unwrap();
 

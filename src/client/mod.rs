@@ -27,6 +27,8 @@ pub enum FcmClientError {
     AuthenticatorCreatingFailed(std::io::Error),
     #[error("Service account key JSON does not contain project ID")]
     MissingProjectId,
+    #[error("Dotenv error: {0}")]
+    DotenvError(#[from] dotenv::Error),
 }
 
 impl FcmClientError {
@@ -40,19 +42,24 @@ impl FcmClientError {
     }
 }
 
+#[derive(Debug, Default, Clone)]
 pub struct FcmClientBuilder {
-    service_account_key_json_path: PathBuf,
+    service_account_key_json_path: Option<PathBuf>,
     token_cache_json_path: Option<PathBuf>,
     fcm_request_timeout: Option<Duration>,
 }
 
 impl FcmClientBuilder {
-    pub fn new(service_account_key_json_path: impl AsRef<Path>) -> Self {
-        Self {
-            service_account_key_json_path: service_account_key_json_path.as_ref().to_path_buf(),
-            token_cache_json_path: None,
-            fcm_request_timeout: None,
-        }
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Set path to the service account key JSON file. Default is to use
+    /// path from the `GOOGLE_APPLICATION_CREDENTIALS` environment variable
+    /// (which can be also located in `.env` file).
+    pub fn service_account_key_json_path(mut self, service_account_key_json_path: impl AsRef<Path>) -> Self {
+        self.service_account_key_json_path = Some(service_account_key_json_path.as_ref().to_path_buf());
+        self
     }
 
     /// Set path to the token cache JSON file. Default is no token cache JSON file.
@@ -83,10 +90,8 @@ pub struct FcmClient {
 }
 
 impl FcmClient {
-    pub fn builder(
-        service_account_key_json_path: impl AsRef<Path>,
-    ) -> FcmClientBuilder {
-        FcmClientBuilder::new(service_account_key_json_path)
+    pub fn builder() -> FcmClientBuilder {
+        FcmClientBuilder::new()
     }
 
     async fn new_from_builder(
@@ -100,7 +105,13 @@ impl FcmClient {
         };
         let http_client = builder.build()?;
 
-        let key = yup_oauth2::read_service_account_key(fcm_builder.service_account_key_json_path)
+        let service_account_key_path = if let Some(path) = fcm_builder.service_account_key_json_path {
+            path
+        } else {
+            dotenv::var("GOOGLE_APPLICATION_CREDENTIALS")?.into()
+        };
+
+        let key = yup_oauth2::read_service_account_key(service_account_key_path)
             .await
             .map_err(FcmClientError::ServiceAccountKeyReadingFailed)?;
         let oauth_client = DefaultHyperClient.build_hyper_client()

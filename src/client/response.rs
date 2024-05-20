@@ -233,17 +233,65 @@ mod tests {
 
     #[test]
     fn test_retry_after_from_seconds() {
-        assert_eq!(RetryAfter::Delay(Duration::from_secs(420)), "420".parse().unwrap());
+        let expected_wait_time = Duration::from_secs(1);
+        let expected = RetryAfter::Delay(expected_wait_time);
+        assert_eq!(expected, "1".parse().unwrap());
+        assert_eq!(expected_wait_time, expected.wait_time_with_current_time(DateTime::default()));
     }
 
     #[test]
     fn test_retry_after_from_date() {
         let date = "Sun, 06 Nov 1994 08:49:37 GMT";
+        let date_time = DateTime::parse_from_rfc2822(date).unwrap();
         let retry_after = RetryAfter::from_str(date).unwrap();
 
         assert_eq!(
-            RetryAfter::DateTime(DateTime::parse_from_rfc2822(date).unwrap()),
+            RetryAfter::DateTime(date_time),
             retry_after,
+        );
+
+        assert_eq!(
+            Duration::ZERO,
+            retry_after.wait_time_with_current_time(date_time),
+        );
+    }
+
+    #[test]
+    fn test_retry_after_from_date_and_get_wait_time_using_future_date() {
+        let date = "Sun, 06 Nov 1994 08:49:37 GMT";
+        let retry_after = RetryAfter::from_str(date).unwrap();
+        let future_date = "Sun, 06 Nov 1994 08:49:38 GMT";
+        let future_date_time = DateTime::parse_from_rfc2822(future_date).unwrap();
+
+        assert_eq!(
+            Duration::from_secs(0),
+            retry_after.wait_time_with_current_time(future_date_time),
+        );
+    }
+
+    #[test]
+    fn test_retry_after_from_date_and_get_wait_time_using_past_date() {
+        let date = "Sun, 06 Nov 1994 08:49:37 GMT";
+        let retry_after = RetryAfter::from_str(date).unwrap();
+        let past_date = "Sun, 06 Nov 1994 08:49:36 GMT";
+        let past_date_time = DateTime::parse_from_rfc2822(past_date).unwrap();
+
+        assert_eq!(
+            Duration::from_secs(1),
+            retry_after.wait_time_with_current_time(past_date_time),
+        );
+    }
+
+    #[test]
+    fn test_retry_after_from_date_and_get_wait_time_using_different_timezone() {
+        let date = "Sun, 06 Nov 1994 08:49:37 GMT";
+        let retry_after = RetryAfter::from_str(date).unwrap();
+        let past_date = "Sun, 06 Nov 1994 08:49:37 +0100";
+        let past_date_time = DateTime::parse_from_rfc2822(past_date).unwrap();
+
+        assert_eq!(
+            Duration::from_secs(60 * 60),
+            retry_after.wait_time_with_current_time(past_date_time),
         );
     }
 }

@@ -29,6 +29,13 @@ pub enum FcmClientError {
     MissingProjectId,
     #[error("Dotenv error: {0}")]
     DotenvError(#[from] dotenv::Error),
+    #[error("Retry-After HTTP header value is not valid string")]
+    RetryAfterHttpHeaderIsNotString,
+    #[error("Retry-After HTTP header value is not valid, error: {error}, value: {value}")]
+    RetryAfterHttpHeaderInvalid {
+        error: chrono::ParseError,
+        value: String,
+    },
 }
 
 impl FcmClientError {
@@ -156,9 +163,19 @@ impl FcmClient {
         let response_status: FcmHttpResponseCode = response.status().as_u16().into();
         let retry_after = response
             .headers()
-            .get(RETRY_AFTER)
-            .and_then(|ra| ra.to_str().ok())
-            .and_then(|ra| ra.parse::<RetryAfter>().ok());
+            .get(RETRY_AFTER);
+        let retry_after = if let Some(header_value) = retry_after {
+            let header_str = header_value.to_str()
+                .map_err(|_| FcmClientError::RetryAfterHttpHeaderIsNotString)?;
+            let value = header_str.parse::<RetryAfter>()
+                .map_err(|error| FcmClientError::RetryAfterHttpHeaderInvalid {
+                    error,
+                    value: header_str.to_string(),
+                })?;
+            Some(value)
+        } else {
+            None
+        };
         let response_json_object = response.json::<serde_json::Map<String, serde_json::Value>>().await
             .ok()
             .unwrap_or_default();

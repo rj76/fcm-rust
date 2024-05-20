@@ -1,26 +1,25 @@
-// cargo run --example simple_sender -- -t <device_token>
+// cargo run --example simple_sender -- --help
 
-use argparse::{ArgumentParser, Store};
+use std::path::PathBuf;
+
+use clap::Parser;
 use fcm::{
     AndroidConfig, AndroidNotification, ApnsConfig, Client, FcmOptions, Message, Notification, Target, WebpushConfig,
 };
 use serde_json::json;
 
+#[derive(Parser, Debug)]
+struct CliArgs {
+    #[arg(long)]
+    device_token: String,
+    #[arg(long, value_name = "FILE")]
+    service_account_key_path: PathBuf,
+}
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    pretty_env_logger::init();
-
-    let mut device_token = String::new();
-
-    {
-        let mut ap = ArgumentParser::new();
-        ap.set_description("A simple FCM notification sender");
-        ap.refer(&mut device_token)
-            .add_option(&["-t", "--device_token"], Store, "Device token");
-        ap.parse_args_or_exit();
-    }
-
-    let client = Client::new("service-account-key.json".to_string());
+    let args = CliArgs::parse();
+    let client = Client::new(args.service_account_key_path.to_str().unwrap().to_string());
 
     let data = json!({
         "key": "value",
@@ -33,7 +32,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             body: Some(format!("it's {}", chrono::Utc::now())),
             ..Default::default()
         }),
-        target: Target::Token(device_token),
+        target: Target::Token(args.device_token),
         fcm_options: Some(FcmOptions {
             analytics_label: "analytics_label".to_string(),
         }),

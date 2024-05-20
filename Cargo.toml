@@ -27,7 +27,6 @@ serde_json = { version = "1", features = ["preserve_order"] }
 reqwest = {version = "0.11.0", features = ["json"], default-features=false}
 chrono = "0.4"
 gauth = "0.7.0"
-dotenv = "0.15.0"
 
 [dev-dependencies]
 argparse = "0.2.1"

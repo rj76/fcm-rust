@@ -10,12 +10,7 @@ use serde::Serialize;
 /// An async client for sending the notification payload.
 pub struct Client {
     http_client: reqwest::Client,
-}
-
-impl Default for Client {
-    fn default() -> Self {
-        Self::new()
-    }
+    key_path: String,
 }
 
 // will be used to wrap the message in a "message" field
@@ -33,22 +28,20 @@ impl MessageWrapper<'_> {
 
 impl Client {
     /// Get a new instance of Client.
-    pub fn new() -> Client {
+    pub fn new(key_path: String) -> Client {
         let http_client = reqwest::ClientBuilder::new()
             .pool_max_idle_per_host(usize::MAX)
             .build()
             .unwrap();
 
-        Client { http_client }
+        Client {
+            http_client,
+            key_path,
+        }
     }
 
     fn get_service_key_file_name(&self) -> Result<String, String> {
-        let key_path = match dotenv::var("GOOGLE_APPLICATION_CREDENTIALS") {
-            Ok(key_path) => key_path,
-            Err(err) => return Err(err.to_string()),
-        };
-
-        Ok(key_path)
+        Ok(self.key_path.clone())
     }
 
     fn read_service_key_file(&self) -> Result<String, String> {

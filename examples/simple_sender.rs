@@ -20,7 +20,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         ap.parse_args_or_exit();
     }
 
-    let client = Client::new();
+    let client = Client::new("service-account-key.json".to_string());
 
     let data = json!({
         "key": "value",

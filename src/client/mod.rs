@@ -1,6 +1,6 @@
 pub(crate) mod response;
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 use crate::client::response::{FcmResponse, RetryAfter};
@@ -12,7 +12,6 @@ use yup_oauth2::hyper_rustls::HttpsConnector;
 use yup_oauth2::ServiceAccountAuthenticator;
 
 use self::response::FcmHttpResponseCode;
-
 
 #[derive(thiserror::Error, Debug)]
 pub enum FcmClientError {
@@ -41,6 +40,41 @@ impl FcmClientError {
     }
 }
 
+pub struct FcmClientBuilder {
+    service_account_key_json_path: PathBuf,
+    token_cache_json_path: Option<PathBuf>,
+    fcm_request_timeout: Option<Duration>,
+}
+
+impl FcmClientBuilder {
+    pub fn new(service_account_key_json_path: impl AsRef<Path>) -> Self {
+        Self {
+            service_account_key_json_path: service_account_key_json_path.as_ref().to_path_buf(),
+            token_cache_json_path: None,
+            fcm_request_timeout: None,
+        }
+    }
+
+    /// Set path to the token cache JSON file. Default is no token cache JSON file.
+    pub fn token_cache_json_path(mut self, token_cache_json_path: impl AsRef<Path>) -> Self {
+        self.token_cache_json_path = Some(token_cache_json_path.as_ref().to_path_buf());
+        self
+    }
+
+    /// Set timeout for FCM requests. Default is no timeout.
+    ///
+    /// Google recommends at least 10 minute timeout for FCM requests.
+    /// https://firebase.google.com/docs/cloud-messaging/scale-fcm#timeouts
+    pub fn fcm_request_timeout(mut self, fcm_request_timeout: Duration) -> Self {
+        self.fcm_request_timeout = Some(fcm_request_timeout);
+        self
+    }
+
+    pub async fn build(self) -> Result<FcmClient, FcmClientError> {
+        FcmClient::new_from_builder(self).await
+    }
+}
+
 /// An async client for sending the notification payload.
 pub struct FcmClient {
     http_client: reqwest::Client,
@@ -49,29 +83,31 @@ pub struct FcmClient {
 }
 
 impl FcmClient {
-    /// Google recommends at least 10 minute timeout for FCM requests.
-    /// https://firebase.google.com/docs/cloud-messaging/scale-fcm#timeouts
-    pub async fn new(
+    pub fn builder(
         service_account_key_json_path: impl AsRef<Path>,
-        token_cache_json_path: Option<impl AsRef<Path>>,
-        fcm_request_timeout: Option<Duration>,
+    ) -> FcmClientBuilder {
+        FcmClientBuilder::new(service_account_key_json_path)
+    }
+
+    async fn new_from_builder(
+        fcm_builder: FcmClientBuilder,
     ) -> Result<FcmClient, FcmClientError> {
         let builder = reqwest::ClientBuilder::new();
-        let builder = if let Some(timeout) = fcm_request_timeout {
+        let builder = if let Some(timeout) = fcm_builder.fcm_request_timeout {
             builder.timeout(timeout)
         } else {
             builder
         };
         let http_client = builder.build()?;
 
-        let key = yup_oauth2::read_service_account_key(service_account_key_json_path.as_ref())
+        let key = yup_oauth2::read_service_account_key(fcm_builder.service_account_key_json_path)
             .await
             .map_err(FcmClientError::ServiceAccountKeyReadingFailed)?;
         let oauth_client = DefaultHyperClient.build_hyper_client()
             .map_err(FcmClientError::OauthError)?;
         let builder = ServiceAccountAuthenticator::with_client(key.clone(), oauth_client);
-        let builder = if let Some(path) = token_cache_json_path {
-            builder.persist_tokens_to_disk(path.as_ref())
+        let builder = if let Some(path) = fcm_builder.token_cache_json_path {
+            builder.persist_tokens_to_disk(path)
         } else {
             builder
         };

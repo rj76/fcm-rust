@@ -19,11 +19,10 @@ struct CliArgs {
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let args = CliArgs::parse();
-    let client = FcmClient::new(
-        args.service_account_key_path.to_str().unwrap().to_string(),
-        None::<PathBuf>,
-        None,
-    ).await.unwrap();
+    let client = FcmClient::builder(args.service_account_key_path)
+        .build()
+        .await
+        .unwrap();
 
     let data = json!({
         "key": "value",

@@ -13,11 +13,10 @@
 //! async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 //!     use serde_json::json;
 //!     use fcm::{Target, FcmOptions, Notification, Message};
-//!     let client = fcm::FcmClient::new(
-//!         "service-account-key.json",
-//!         None::<String>,
-//!         None,
-//!     ).await.unwrap();
+//!     let client = fcm::FcmClient::builder("service-account-key.json")
+//!         .build()
+//!         .await
+//!         .unwrap();
 //!
 //!     let data = json!({
 //!         "message": "Howdy!"

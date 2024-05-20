@@ -149,7 +149,7 @@ impl FcmClient {
             .http_client
             .post(&url)
             .bearer_auth(auth_token)
-            .json(&MessageWrapper::new(message.finalize()))
+            .json(&MessageWrapper::new(message))
             .build()?;
 
         let response = self.http_client.execute(request).await?;

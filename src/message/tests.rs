@@ -12,8 +12,7 @@ fn should_create_new_message() {
         webpush: None,
         apns: None,
         fcm_options: None,
-    }
-    .finalize();
+    };
 
     assert_eq!(msg.target, target);
 }
@@ -29,8 +28,7 @@ fn should_leave_nones_out_of_the_json() {
         webpush: None,
         apns: None,
         fcm_options: None,
-    }
-    .finalize();
+    };
     let payload = serde_json::to_string(&msg).unwrap();
 
     let expected_payload = json!({
@@ -46,7 +44,7 @@ fn should_add_custom_data_to_the_payload() {
     let target = Target::Token("token".to_string());
     let data = json!({ "foo": "bar", "bar": false });
 
-    let builder = Message {
+    let msg = Message {
         target,
         data: Some(data),
         notification: None,
@@ -56,7 +54,6 @@ fn should_add_custom_data_to_the_payload() {
         fcm_options: None,
     };
 
-    let msg = builder.finalize();
     let payload = serde_json::to_string(&msg).unwrap();
 
     let expected_payload = json!({
@@ -79,7 +76,7 @@ fn should_be_able_to_render_a_full_token_message_to_json() {
         body: None,
         image: None,
     };
-    let builder = Message {
+    let msg = Message {
         target: target.clone(),
         data: None,
         notification: Some(notification),
@@ -89,7 +86,7 @@ fn should_be_able_to_render_a_full_token_message_to_json() {
         fcm_options: None,
     };
 
-    let payload = serde_json::to_string(&builder.finalize()).unwrap();
+    let payload = serde_json::to_string(&msg).unwrap();
 
     let expected_payload = json!({
         "notification": {},
@@ -108,7 +105,7 @@ fn should_be_able_to_render_a_full_topic_message_to_json() {
         body: None,
         image: None,
     };
-    let builder = Message {
+    let msg = Message {
         target: target.clone(),
         data: None,
         notification: Some(notification),
@@ -118,7 +115,7 @@ fn should_be_able_to_render_a_full_topic_message_to_json() {
         fcm_options: None,
     };
 
-    let payload = serde_json::to_string(&builder.finalize()).unwrap();
+    let payload = serde_json::to_string(&msg).unwrap();
 
     let expected_payload = json!({
         "notification": {},
@@ -137,7 +134,7 @@ fn should_be_able_to_render_a_full_condition_message_to_json() {
         body: None,
         image: None,
     };
-    let builder = Message {
+    let msg = Message {
         target: target.clone(),
         data: None,
         notification: Some(notification),
@@ -147,7 +144,7 @@ fn should_be_able_to_render_a_full_condition_message_to_json() {
         fcm_options: None,
     };
 
-    let payload = serde_json::to_string(&builder.finalize()).unwrap();
+    let payload = serde_json::to_string(&msg).unwrap();
 
     let expected_payload = json!({
         "notification": {},
@@ -168,7 +165,7 @@ fn should_set_notifications() {
         image: None,
     };
 
-    let builder = Message {
+    let msg = Message {
         target: target.clone(),
         data: None,
         notification: Some(nm),
@@ -177,7 +174,6 @@ fn should_set_notifications() {
         apns: None,
         fcm_options: None,
     };
-    let msg = builder.finalize();
 
     assert!(msg.notification.is_some());
 }

@@ -1,176 +1,62 @@
-pub use chrono::{DateTime, Duration, FixedOffset};
-use serde::Deserialize;
-use std::{error::Error, fmt, str::FromStr};
+use chrono::{DateTime, FixedOffset};
 
-/// A description of what went wrong with the push notification.
-/// Referred from [Firebase documentation](https://firebase.google.com/docs/cloud-messaging/http-server-ref#table9)
-#[derive(Deserialize, Debug, PartialEq, Copy, Clone)]
-pub enum ErrorReason {
-    /// Check that the request contains a registration token (in the `to` or
-    /// `registration_ids` field).
-    MissingRegistration,
+use chrono::Utc;
+use std::time::Duration;
+use std::{convert::{TryFrom, TryInto}, str::FromStr};
 
-    /// Check the format of the registration token you pass to the server. Make
-    /// sure it matches the registration token the client app receives from
-    /// registering with Firebase Notifications. Do not truncate or add
-    /// additional characters.
-    InvalidRegistration,
-
-    /// An existing registration token may cease to be valid in a number of
-    /// scenarios, including:
-    ///
-    /// * If the client app unregisters with FCM.
-    /// * If the client app is automatically unregistered, which can happen if
-    ///   the user uninstalls the application. For example, on iOS, if the APNS
-    ///   Feedback Service reported the APNS token as invalid.
-    /// * If the registration token expires (for example, Google might decide to
-    ///   refresh registration tokens, or the APNS token has expired for iOS
-    ///   devices).
-    /// * If the client app is updated but the new version is not configured to
-    ///   receive messages.
-    ///
-    /// For all these cases, remove this registration token from the app server
-    /// and stop using it to send messages.
-    NotRegistered,
-
-    /// Make sure the message was addressed to a registration token whose
-    /// package name matches the value passed in the request.
-    InvalidPackageName,
-
-    /// A registration token is tied to a certain group of senders. When a
-    /// client app registers for FCM, it must specify which senders are allowed
-    /// to send messages. You should use one of those sender IDs when sending
-    /// messages to the client app. If you switch to a different sender, the
-    /// existing registration tokens won't work.
-    MismatchSenderId,
-
-    /// Check that the provided parameters have the right name and type.
-    InvalidParameters,
-
-    /// Check that the total size of the payload data included in a message does
-    /// not exceed FCM limits: 4096 bytes for most messages, or 2048 bytes in
-    /// the case of messages to topics. This includes both the keys and the
-    /// values.
-    MessageTooBig,
-
-    /// Check that the custom payload data does not contain a key (such as
-    /// `from`, or `gcm`, or any value prefixed by google) that is used
-    /// internally by FCM. Note that some words (such as `collapse_key`) are
-    /// also used by FCM but are allowed in the payload, in which case the
-    /// payload value will be overridden by the FCM value.
-    InvalidDataKey,
-
-    /// Check that the value used in `time_to_live` is an integer representing a
-    /// duration in seconds between 0 and 2,419,200 (4 weeks).
-    InvalidTtl,
-
-    /// In internal use only. Check
-    /// [FcmError::ServerError](enum.FcmError.html#variant.ServerError).
-    Unavailable,
-
-    /// In internal use only. Check
-    /// [FcmError::ServerError](enum.FcmError.html#variant.ServerError).
-    InternalServerError,
-
-    /// The rate of messages to a particular device is too high. If an iOS app
-    /// sends messages at a rate exceeding APNs limits, it may receive this
-    /// error message
-    ///
-    /// Reduce the number of messages sent to this device and use exponential
-    /// backoff to retry sending.
-    DeviceMessageRateExceeded,
-
-    /// The rate of messages to subscribers to a particular topic is too high.
-    /// Reduce the number of messages sent for this topic and use exponential
-    /// backoff to retry sending.
-    TopicsMessageRateExceeded,
-
-    /// A message targeted to an iOS device could not be sent because the
-    /// required APNs authentication key was not uploaded or has expired. Check
-    /// the validity of your development and production credentials.
-    InvalidApnsCredential,
+/// Check https://firebase.google.com/docs/reference/fcm/rest/v1/ErrorCode
+/// for more information.
+#[derive(Debug, Clone, Copy, PartialEq)]
+#[repr(u16)]
+pub enum FcmHttpError {
+    InvalidArgument = 400,
+    Unregistered = 404,
+    SenderIdMismatch = 403,
+    QuotaExceeded = 429,
+    Unavailable = 503,
+    Internal = 500,
+    ThirdPartyAuthError = 401,
 }
 
-#[derive(Deserialize, Debug)]
-pub struct FcmResponse {
-    pub message_id: Option<u64>,
-    pub error: Option<ErrorReason>,
-    pub multicast_id: Option<i64>,
-    pub success: Option<u64>,
-    pub failure: Option<u64>,
-    pub canonical_ids: Option<u64>,
-    pub results: Option<Vec<MessageResult>>,
-}
+impl TryFrom<u16> for FcmHttpError {
+    type Error = ();
 
-#[derive(Deserialize, Debug)]
-pub struct MessageResult {
-    pub message_id: Option<String>,
-    pub registration_id: Option<String>,
-    pub error: Option<ErrorReason>,
-}
-
-/// Fatal errors. Referred from [Firebase
-/// documentation](https://firebase.google.com/docs/cloud-messaging/http-server-ref#table9)
-#[derive(PartialEq, Debug)]
-pub enum FcmError {
-    /// The sender account used to send a message couldn't be authenticated. Possible causes are:
-    ///
-    /// Authorization header missing or with invalid syntax in HTTP request.
-    ///
-    /// * The Firebase project that the specified server key belongs to is
-    ///   incorrect.
-    /// * Legacy server keys only—the request originated from a server not
-    ///   whitelisted in the Server key IPs.
-    ///
-    /// Check that the token you're sending inside the Authentication header is
-    /// the correct Server key associated with your project. See Checking the
-    /// validity of a Server key for details. If you are using a legacy server
-    /// key, you're recommended to upgrade to a new key that has no IP
-    /// restrictions.
-    Unauthorized,
-
-    /// Check that the JSON message is properly formatted and contains valid
-    /// fields (for instance, making sure the right data type is passed in).
-    InvalidMessage(String),
-
-    /// The server couldn't process the request. Retry the same request, but you must:
-    ///
-    /// * Honor the [RetryAfter](enum.RetryAfter.html) value if included.
-    /// * Implement exponential back-off in your retry mechanism. (e.g. if you
-    ///   waited one second before the first retry, wait at least two second
-    ///   before the next one, then 4 seconds and so on). If you're sending
-    ///   multiple messages, delay each one independently by an additional random
-    ///   amount to avoid issuing a new request for all messages at the same time.
-    ///
-    /// Senders that cause problems risk being blacklisted.
-    ServerError(Option<RetryAfter>),
-
-    ProjectIdError(String),
-
-    AuthToken(String),
-}
-
-impl Error for FcmError {}
-
-impl fmt::Display for FcmError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            FcmError::Unauthorized => write!(f, "authorization header missing or with invalid syntax in HTTP request"),
-            FcmError::InvalidMessage(ref s) => write!(f, "invalid message {}", s),
-            FcmError::ServerError(_) => write!(f, "the server couldn't process the request"),
-            FcmError::ProjectIdError(error) => write!(f, "error getting project_id: {error}"),
-            FcmError::AuthToken(error) => write!(f, "error getting auth token: {error}"),
+    fn try_from(value: u16) -> Result<Self, Self::Error> {
+        match value {
+            400 => Ok(FcmHttpError::InvalidArgument),
+            404 => Ok(FcmHttpError::Unregistered),
+            403 => Ok(FcmHttpError::SenderIdMismatch),
+            429 => Ok(FcmHttpError::QuotaExceeded),
+            503 => Ok(FcmHttpError::Unavailable),
+            500 => Ok(FcmHttpError::Internal),
+            401 => Ok(FcmHttpError::ThirdPartyAuthError),
+            _ => Err(()),
         }
     }
 }
 
-impl From<reqwest::Error> for FcmError {
-    fn from(_: reqwest::Error) -> Self {
-        Self::ServerError(None)
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum FcmHttpResponseCode {
+    /// HTTP 200
+    Ok,
+    Error(FcmHttpError),
+    Unknown(u16),
+}
+
+impl From<u16> for FcmHttpResponseCode {
+    fn from(value: u16) -> Self {
+        match value {
+            200 => FcmHttpResponseCode::Ok,
+            _ => match value.try_into() {
+                Ok(code) => FcmHttpResponseCode::Error(code),
+                Err(()) => FcmHttpResponseCode::Unknown(value),
+            },
+        }
     }
 }
 
-#[derive(PartialEq, Debug)]
+/// HTTP `Retry-After` header value.
+#[derive(Debug, Clone, PartialEq)]
 pub enum RetryAfter {
     /// Amount of time to wait until retrying the message is allowed.
     Delay(Duration),
@@ -179,63 +65,175 @@ pub enum RetryAfter {
     DateTime(DateTime<FixedOffset>),
 }
 
+impl RetryAfter {
+    /// Wait time calculated from current operating system time.
+    pub fn wait_time(&self) -> Duration {
+        self.wait_time_with_current_time(Utc::now().fixed_offset())
+    }
+
+    fn wait_time_with_current_time(&self, now: DateTime<FixedOffset>) -> Duration {
+        match self {
+            RetryAfter::Delay(duration) => *duration,
+            RetryAfter::DateTime(date_time) =>
+                if *date_time <= now {
+                    Duration::ZERO
+                } else {
+                    (*date_time - now)
+                        .to_std()
+                        .unwrap_or(Duration::ZERO)
+                }
+        }
+    }
+}
+
 impl FromStr for RetryAfter {
-    type Err = crate::Error;
+    type Err = chrono::ParseError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        s.parse::<i64>()
-            .map(Duration::seconds)
+        s.parse::<u64>()
+            .map(Duration::from_secs)
             .map(RetryAfter::Delay)
             .or_else(|_| DateTime::parse_from_rfc2822(s).map(RetryAfter::DateTime))
-            .map_err(|e| crate::Error::InvalidMessage(format!("{}", e)))
     }
+}
+
+#[derive(Debug, Clone)]
+pub struct FcmResponse {
+    response_status: FcmHttpResponseCode,
+    response_json_object: serde_json::Map<String, serde_json::Value>,
+    retry_after: Option<RetryAfter>,
+}
+
+impl FcmResponse {
+    pub(crate) fn new(
+        response_status: FcmHttpResponseCode,
+        response_json_object: serde_json::Map<String, serde_json::Value>,
+        retry_after: Option<RetryAfter>,
+    ) -> Self {
+        Self {
+            response_status,
+            response_json_object,
+            retry_after,
+        }
+    }
+
+    pub fn recommended_action(&self) -> Option<RecomendedAction> {
+        RecomendedAction::analyze(self)
+    }
+
+    pub fn status(&self) -> FcmHttpResponseCode {
+        self.response_status
+    }
+
+    pub fn json(&self) -> &serde_json::Map<String, serde_json::Value> {
+        &self.response_json_object
+    }
+
+    pub fn retry_after(&self) -> Option<&RetryAfter> {
+        self.retry_after.as_ref()
+    }
+}
+
+
+/// Action which server or developer should do based on the [FcmResponse].
+///
+/// Check https://firebase.google.com/docs/reference/fcm/rest/v1/ErrorCode
+/// and https://firebase.google.com/docs/cloud-messaging/scale-fcm#handling-retries
+/// for more details.
+pub enum RecomendedAction<'a> {
+    /// Error [FcmHttpError::Unregistered] was received.
+    /// The app token sent with the message was detected as
+    /// missing or unregistered and should be removed.
+    RemoveFcmAppToken,
+
+    /// Error [FcmHttpError::InvalidArgument] was received. Check
+    /// that the sent message is correct.
+    FixMessageContent,
+
+    /// Error [FcmHttpError::SenderIdMismatch] was received. Check
+    /// that that client and server uses the same sender ID.
+    CheckSenderIdEquality,
+
+    /// Error [FcmHttpError::QuotaExceeded] was received. Reduce
+    /// overall message sending rate, device message rate or
+    /// topic message rate and then retry sending the previous
+    /// message.
+    ///
+    /// TODO: Figure out QuotaExceeded format to know what quota was exceeded
+    ReduceMessageRateAndRetry(RecomendedWaitTime<'a>),
+
+    /// Error [FcmHttpError::Unavailable] or [FcmHttpError::Internal]
+    /// was received. Wait specific amount of time before retrying the message.
+    Retry(RecomendedWaitTime<'a>),
+
+    /// Error [FcmHttpError::ThirdPartyAuthError] was received. Check
+    /// credentials related to iOS and web push notifications.
+    CheckIosAndWebCredentials,
+}
+
+impl RecomendedAction<'_> {
+    fn analyze(response: &FcmResponse) -> Option<RecomendedAction> {
+        match response.status() {
+            FcmHttpResponseCode::Ok |
+            FcmHttpResponseCode::Unknown(_) => None,
+            FcmHttpResponseCode::Error(e) => match e {
+                FcmHttpError::Unregistered => Some(RecomendedAction::RemoveFcmAppToken),
+                FcmHttpError::InvalidArgument => Some(RecomendedAction::FixMessageContent),
+                FcmHttpError::SenderIdMismatch =>
+                    Some(RecomendedAction::CheckSenderIdEquality),
+                FcmHttpError::QuotaExceeded => {
+                    let wait_time = if let Some(ra) = response.retry_after() {
+                        RecomendedWaitTime::SpecificWaitTime(ra)
+                    } else {
+                        RecomendedWaitTime::InitialWaitTime(Duration::from_secs(60))
+                    };
+
+                    Some(RecomendedAction::ReduceMessageRateAndRetry(wait_time))
+                }
+                FcmHttpError::Unavailable => {
+                    let wait_time = if let Some(ra) = response.retry_after() {
+                        RecomendedWaitTime::SpecificWaitTime(ra)
+                    } else {
+                        RecomendedWaitTime::InitialWaitTime(Duration::from_secs(10))
+                    };
+
+                    Some(RecomendedAction::Retry(wait_time))
+                }
+                FcmHttpError::Internal =>
+                    Some(RecomendedAction::Retry(
+                        RecomendedWaitTime::InitialWaitTime(Duration::from_secs(10))
+                    )),
+                FcmHttpError::ThirdPartyAuthError =>
+                    Some(RecomendedAction::CheckIosAndWebCredentials),
+            }
+        }
+    }
+}
+
+pub enum RecomendedWaitTime<'a> {
+    /// Initial wait time for exponential back-off.
+    ///
+    /// If the next request will be initial retry then wait this
+    /// amount of time before sending the request. For next retries
+    /// multiply the wait time by itself (then the wait time
+    /// grows exponentially).
+    ///
+    /// Note also that Google documentation also recommends implementing
+    /// jittering to exponential back-off.
+    InitialWaitTime(Duration),
+
+    /// Specific wait time from HTTP header.
+    SpecificWaitTime(&'a RetryAfter),
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use chrono::{DateTime, Duration};
-    use serde_json::json;
-
-    #[test]
-    fn test_some_errors() {
-        let errors = vec![
-            ("MissingRegistration", ErrorReason::MissingRegistration),
-            ("InvalidRegistration", ErrorReason::InvalidRegistration),
-            ("NotRegistered", ErrorReason::NotRegistered),
-            ("InvalidPackageName", ErrorReason::InvalidPackageName),
-            ("MismatchSenderId", ErrorReason::MismatchSenderId),
-            ("InvalidParameters", ErrorReason::InvalidParameters),
-            ("MessageTooBig", ErrorReason::MessageTooBig),
-            ("InvalidDataKey", ErrorReason::InvalidDataKey),
-            ("InvalidTtl", ErrorReason::InvalidTtl),
-            ("Unavailable", ErrorReason::Unavailable),
-            ("InternalServerError", ErrorReason::InternalServerError),
-            ("DeviceMessageRateExceeded", ErrorReason::DeviceMessageRateExceeded),
-            ("TopicsMessageRateExceeded", ErrorReason::TopicsMessageRateExceeded),
-            ("InvalidApnsCredential", ErrorReason::InvalidApnsCredential),
-        ];
-
-        for (error_str, error_enum) in errors.into_iter() {
-            let response_data = json!({
-                "error": error_str,
-                "results": [
-                    {"error": error_str}
-                ]
-            });
-
-            let response_string = serde_json::to_string(&response_data).unwrap();
-            let fcm_response: FcmResponse = serde_json::from_str(&response_string).unwrap();
-
-            assert_eq!(Some(error_enum.clone()), fcm_response.results.unwrap()[0].error,);
-
-            assert_eq!(Some(error_enum), fcm_response.error,)
-        }
-    }
+    use chrono::DateTime;
 
     #[test]
     fn test_retry_after_from_seconds() {
-        assert_eq!(RetryAfter::Delay(Duration::seconds(420)), "420".parse().unwrap());
+        assert_eq!(RetryAfter::Delay(Duration::from_secs(420)), "420".parse().unwrap());
     }
 
     #[test]

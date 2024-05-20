@@ -101,3 +101,16 @@ impl Message {
         }
     }
 }
+
+/// Wrap the message in a "message" field
+#[derive(Serialize)]
+pub(crate) struct MessageWrapper {
+    #[serde(rename = "message")]
+    message: MessageInternal,
+}
+
+impl MessageWrapper {
+    pub fn new(message: MessageInternal) -> MessageWrapper {
+        MessageWrapper { message }
+    }
+}

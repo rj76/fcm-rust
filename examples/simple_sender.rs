@@ -4,7 +4,7 @@ use std::path::PathBuf;
 
 use clap::Parser;
 use fcm::{
-    AndroidConfig, AndroidNotification, ApnsConfig, Client, FcmOptions, Message, Notification, Target, WebpushConfig,
+    AndroidConfig, AndroidNotification, ApnsConfig, FcmClient, FcmOptions, Message, Notification, Target, WebpushConfig,
 };
 use serde_json::json;
 
@@ -19,7 +19,11 @@ struct CliArgs {
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let args = CliArgs::parse();
-    let client = Client::new(args.service_account_key_path.to_str().unwrap().to_string());
+    let client = FcmClient::new(
+        args.service_account_key_path.to_str().unwrap().to_string(),
+        None::<PathBuf>,
+        None,
+    ).await.unwrap();
 
     let data = json!({
         "key": "value",

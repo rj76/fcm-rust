@@ -13,7 +13,11 @@
 //! async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 //!     use serde_json::json;
 //!     use fcm::{Target, FcmOptions, Notification, Message};
-//!     let client = fcm::Client::new();
+//!     let client = fcm::FcmClient::new(
+//!         "service-account-key.json",
+//!         None::<String>,
+//!         None,
+//!     ).await.unwrap();
 //!
 //!     let data = json!({
 //!         "message": "Howdy!"
@@ -69,5 +73,5 @@ pub use crate::web::webpush_config::*;
 pub use crate::web::webpush_fcm_options::*;
 
 mod client;
-pub use crate::client::response::FcmError as Error;
+pub use crate::client::response::*;
 pub use crate::client::*;

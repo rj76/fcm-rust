@@ -4,7 +4,7 @@ use std::path::PathBuf;
 
 use clap::Parser;
 use fcm::{
-    AndroidConfig, AndroidNotification, ApnsConfig, FcmClient, FcmOptions, Message, Notification, Target, WebpushConfig,
+    FcmClient, Message, Notification, Target,
 };
 use serde_json::json;
 
@@ -33,36 +33,23 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         .await
         .unwrap();
 
-    let data = json!({
-        "key": "value",
-    });
-
-    let builder = Message {
-        data: Some(data),
+    let message = Message {
+        data: Some(json!({
+            "key": "value",
+        })),
         notification: Some(Notification {
-            title: Some("I'm high".to_string()),
-            body: Some(format!("it's {}", chrono::Utc::now())),
+            title: Some("Title".to_string()),
             ..Default::default()
         }),
         target: Target::Token(args.device_token),
-        fcm_options: Some(FcmOptions {
-            analytics_label: "analytics_label".to_string(),
-        }),
-        android: Some(AndroidConfig {
-            priority: Some(fcm::AndroidMessagePriority::High),
-            notification: Some(AndroidNotification {
-                title: Some("I'm Android high".to_string()),
-                body: Some(format!("Hi Android, it's {}", chrono::Utc::now())),
-                ..Default::default()
-            }),
-            ..Default::default()
-        }),
-        apns: Some(ApnsConfig { ..Default::default() }),
-        webpush: Some(WebpushConfig { ..Default::default() }),
+        fcm_options: None,
+        android: None,
+        apns: None,
+        webpush: None,
     };
 
-    let response = client.send(builder).await?;
-    println!("Sent: {:?}", response);
+    let response = client.send(message).await?;
+    println!("Response: {:#?}", response);
 
     Ok(())
 }

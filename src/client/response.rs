@@ -72,16 +72,14 @@ impl RetryAfter {
     }
 
     fn wait_time_with_current_time(&self, now: DateTime<FixedOffset>) -> Duration {
-        match self {
-            RetryAfter::Delay(duration) => *duration,
+        match *self {
+            RetryAfter::Delay(duration) => duration,
             RetryAfter::DateTime(date_time) =>
-                if *date_time <= now {
-                    Duration::ZERO
-                } else {
-                    (*date_time - now)
-                        .to_std()
-                        .unwrap_or(Duration::ZERO)
-                }
+                (date_time - now)
+                    .to_std()
+                    // TimeDelta is negative when the date_time is in the
+                    // past. In that case wait time is 0.
+                    .unwrap_or(Duration::ZERO)
         }
     }
 }
@@ -93,7 +91,10 @@ impl FromStr for RetryAfter {
         s.parse::<u64>()
             .map(Duration::from_secs)
             .map(RetryAfter::Delay)
-            .or_else(|_| DateTime::parse_from_rfc2822(s).map(RetryAfter::DateTime))
+            .or_else(
+                |_| DateTime::parse_from_rfc2822(s)
+                    .map(RetryAfter::DateTime)
+            )
     }
 }
 

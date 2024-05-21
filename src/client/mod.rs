@@ -9,7 +9,7 @@ mod oauth_yup_oauth2;
 #[cfg(feature = "gauth")]
 use oauth_gauth as oauth_client_impl;
 
-#[cfg(feature = "yup-oauth2")]
+#[cfg(all(feature = "yup-oauth2", not(feature = "gauth")))]
 use oauth_yup_oauth2 as oauth_client_impl;
 
 use std::path::{Path, PathBuf};
@@ -44,7 +44,7 @@ pub enum FcmClientError {
 
 impl FcmClientError {
     /// If this is `true` then most likely current service key is invalid.
-    #[cfg(feature = "yup-oauth2")]
+    #[cfg(all(feature = "yup-oauth2", not(feature = "gauth")))]
     pub fn is_access_token_missing_even_if_server_requests_completed(&self) -> bool {
         match self {
             FcmClientError::Oauth(error) =>
@@ -55,12 +55,14 @@ impl FcmClientError {
 }
 
 trait OauthClient: Sized {
+    type Error;
+
     async fn create_with_key_file(
         service_account_key_path: PathBuf,
         token_cache_json_path: Option<PathBuf>,
-    ) -> Result<Self, FcmOauthError>;
+    ) -> Result<Self, Self::Error>;
 
-    async fn get_access_token(&self) -> Result<String, FcmOauthError>;
+    async fn get_access_token(&self) -> Result<String, Self::Error>;
 
     fn get_project_id(&self) -> &str;
 }

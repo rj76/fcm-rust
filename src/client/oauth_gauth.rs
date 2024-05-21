@@ -24,6 +24,8 @@ pub struct OauthClientImpl {
 }
 
 impl OauthClient for OauthClientImpl {
+    type Error = FcmOauthError;
+
     async fn create_with_key_file(
         service_account_key_path: PathBuf,
         _token_cache_json_path: Option<PathBuf>,

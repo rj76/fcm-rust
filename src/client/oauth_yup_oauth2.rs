@@ -26,7 +26,10 @@ impl OauthErrorInfo for YupOauth2Error {
         matches!(
             self,
             YupOauth2Error::AccessTokenIsMissing |
-            YupOauth2Error::Oauth(yup_oauth2::Error::AuthError(_))
+            YupOauth2Error::Oauth(
+                yup_oauth2::Error::MissingAccessToken |
+                yup_oauth2::Error::AuthError(_)
+            )
         )
     }
 }

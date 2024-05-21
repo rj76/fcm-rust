@@ -11,7 +11,7 @@
 //! #[tokio::main]
 //! async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 //!     use serde_json::json;
-//!     use fcm::{Target, FcmOptions, Notification, Message};
+//!     use fcm::{Target, Notification, Message};
 //!     let client = fcm::FcmClient::builder()
 //!         // Comment to use GOOGLE_APPLICATION_CREDENTIALS environment
 //!         // variable. The variable can also be defined in .env file.
@@ -38,7 +38,7 @@
 //!         fcm_options: None,
 //!     };
 //!
-//!     let response = client.send(builder).await?;
+//!     let response = client.send(message).await?;
 //!     println!("Response: {:?}", response);
 //!
 //!     Ok(())

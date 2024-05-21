@@ -23,7 +23,7 @@ pub type DefaultOauthClient = oauth_yup_oauth2::YupOauth2;
 const FIREBASE_OAUTH_SCOPE: &str = "https://www.googleapis.com/auth/firebase.messaging";
 
 #[derive(thiserror::Error, Debug)]
-pub enum FcmClientError<T: OauthErrorInfo = <DefaultOauthClient as OauthClient>::Error> {
+pub enum FcmClientError<T: OauthError = <DefaultOauthClient as OauthClient>::Error> {
     #[error("Reqwest error: {0}")]
     Reqwest(#[from] reqwest::Error),
     #[error("OAuth error: {0}")]
@@ -39,9 +39,9 @@ pub enum FcmClientError<T: OauthErrorInfo = <DefaultOauthClient as OauthClient>:
     },
 }
 
-#[cfg(feature = "yup-oauth2")]
-impl FcmClientError<oauth_yup_oauth2::YupOauth2Error> {
-    /// If this is `true` then most likely current service key is invalid.
+impl <T: OauthErrorAccessTokenStatus> FcmClientError<T> {
+    /// If this is `true` then most likely current service account
+    /// key is invalid.
     pub fn is_access_token_missing_even_if_server_requests_completed(&self) -> bool {
         match self {
             FcmClientError::Oauth(error) =>
@@ -52,7 +52,7 @@ impl FcmClientError<oauth_yup_oauth2::YupOauth2Error> {
 }
 
 pub trait OauthClient: Sized {
-    type Error: OauthErrorInfo;
+    type Error: OauthError;
 
     fn create_with_key_file(
         service_account_key_path: PathBuf,
@@ -66,8 +66,11 @@ pub trait OauthClient: Sized {
     fn get_project_id(&self) -> &str;
 }
 
-pub trait OauthErrorInfo: std::error::Error {
-    /// If this is `true` then most likely current service key is invalid.
+pub trait OauthError: std::error::Error {}
+
+pub trait OauthErrorAccessTokenStatus: OauthError {
+    /// If this is `true` then most likely current service account
+    /// key is invalid.
     fn is_access_token_missing_even_if_server_requests_completed(&self) -> bool;
 }
 

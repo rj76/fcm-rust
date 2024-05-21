@@ -5,7 +5,7 @@ use yup_oauth2::hyper::client::HttpConnector;
 use yup_oauth2::hyper_rustls::HttpsConnector;
 use yup_oauth2::ServiceAccountAuthenticator;
 
-use super::{OauthClient, OauthErrorInfo, FIREBASE_OAUTH_SCOPE};
+use super::{OauthClient, OauthError, OauthErrorAccessTokenStatus, FIREBASE_OAUTH_SCOPE};
 
 #[derive(thiserror::Error, Debug)]
 pub enum YupOauth2Error {
@@ -21,7 +21,9 @@ pub enum YupOauth2Error {
     ProjectIdIsMissing,
 }
 
-impl OauthErrorInfo for YupOauth2Error {
+impl OauthError for YupOauth2Error {}
+
+impl OauthErrorAccessTokenStatus for YupOauth2Error {
     fn is_access_token_missing_even_if_server_requests_completed(&self) -> bool {
         matches!(
             self,

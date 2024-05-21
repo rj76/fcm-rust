@@ -2,7 +2,7 @@ use std::path::{Path, PathBuf};
 
 use gauth::serv_account::ServiceAccount;
 
-use super::{OauthClient, OauthErrorInfo, FIREBASE_OAUTH_SCOPE};
+use super::{OauthClient, OauthError, FIREBASE_OAUTH_SCOPE};
 
 #[derive(thiserror::Error, Debug)]
 pub enum GauthError {
@@ -18,12 +18,7 @@ pub enum GauthError {
     ProjectIdIsMissing,
 }
 
-impl OauthErrorInfo for GauthError {
-    fn is_access_token_missing_even_if_server_requests_completed(&self) -> bool {
-        // Not supported
-        false
-    }
-}
+impl OauthError for GauthError {}
 
 pub struct Gauth {
     project_id: String,

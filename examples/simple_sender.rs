@@ -10,7 +10,7 @@ use serde_json::json;
 
 #[derive(Parser, Debug)]
 struct CliArgs {
-    #[arg(long)]
+    #[arg(short = 't', long)]
     device_token: String,
     /// Set path to the service account key JSON file. Default is to use
     /// path from the `GOOGLE_APPLICATION_CREDENTIALS` environment variable

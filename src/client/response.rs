@@ -4,6 +4,8 @@ use chrono::Utc;
 use std::time::Duration;
 use std::{convert::{TryFrom, TryInto}, str::FromStr};
 
+/// FCM errors which have HTTP status code defined.
+///
 /// Check <https://firebase.google.com/docs/reference/fcm/rest/v1/ErrorCode>
 /// for more information.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -36,20 +38,43 @@ impl TryFrom<u16> for FcmHttpError {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub enum FcmHttpResponseCode {
-    /// HTTP 200
+pub enum FcmHttpResponseStatus {
+    /// FCM message was sent successfully.
     Ok,
+    /// HTTP error code was detected as FCM error.
     Error(FcmHttpError),
-    Unknown(u16),
+    /// HTTP status code did not match with [FcmHttpError] and
+    /// `FcmError` JSON was detected.
+    ///
+    /// <https://firebase.google.com/docs/reference/fcm/rest/v1/FcmError>
+    ///
+    /// This variant is named as [FcmHttpResponseStatus::UnspecifiedError]
+    /// because `UNSPECIFIED_ERROR` is the only `ErrorCode` variant that has no
+    /// corresponding HTTP status code.
+    ///
+    /// <https://firebase.google.com/docs/reference/fcm/rest/v1/ErrorCode>
+    UnspecifiedError,
+    Unknown {
+        http_status_code: u16,
+    },
 }
 
-impl From<u16> for FcmHttpResponseCode {
-    fn from(value: u16) -> Self {
-        match value {
-            200 => FcmHttpResponseCode::Ok,
-            _ => match value.try_into() {
-                Ok(code) => FcmHttpResponseCode::Error(code),
-                Err(()) => FcmHttpResponseCode::Unknown(value),
+impl FcmHttpResponseStatus {
+    pub fn new(
+        http_status_code: u16,
+        response_json: &serde_json::Map<String, serde_json::Value>,
+    ) -> Self {
+        if let Ok(error) = http_status_code.try_into() {
+            return FcmHttpResponseStatus::Error(error);
+        }
+
+        let message = response_json.get("name");
+        let fcm_error = response_json.get("error_code");
+        match (message, fcm_error) {
+            (Some(_), _) => FcmHttpResponseStatus::Ok,
+            (_, Some(_)) => FcmHttpResponseStatus::UnspecifiedError,
+            (None, None) => FcmHttpResponseStatus::Unknown {
+                http_status_code,
             },
         }
     }
@@ -100,14 +125,14 @@ impl FromStr for RetryAfter {
 
 #[derive(Debug, Clone)]
 pub struct FcmResponse {
-    response_status: FcmHttpResponseCode,
+    response_status: FcmHttpResponseStatus,
     response_json_object: serde_json::Map<String, serde_json::Value>,
     retry_after: Option<RetryAfter>,
 }
 
 impl FcmResponse {
     pub(crate) fn new(
-        response_status: FcmHttpResponseCode,
+        response_status: FcmHttpResponseStatus,
         response_json_object: serde_json::Map<String, serde_json::Value>,
         retry_after: Option<RetryAfter>,
     ) -> Self {
@@ -122,7 +147,7 @@ impl FcmResponse {
         RecomendedAction::analyze(self)
     }
 
-    pub fn status(&self) -> FcmHttpResponseCode {
+    pub fn status(&self) -> FcmHttpResponseStatus {
         self.response_status
     }
 
@@ -141,6 +166,7 @@ impl FcmResponse {
 /// Check <https://firebase.google.com/docs/reference/fcm/rest/v1/ErrorCode>
 /// and <https://firebase.google.com/docs/cloud-messaging/scale-fcm#handling-retries>
 /// for more details.
+#[derive(Debug, Clone, PartialEq)]
 pub enum RecomendedAction<'a> {
     /// Error [FcmHttpError::Unregistered] was received.
     /// The app token sent with the message was detected as
@@ -175,9 +201,10 @@ pub enum RecomendedAction<'a> {
 impl RecomendedAction<'_> {
     fn analyze(response: &FcmResponse) -> Option<RecomendedAction> {
         match response.status() {
-            FcmHttpResponseCode::Ok |
-            FcmHttpResponseCode::Unknown(_) => None,
-            FcmHttpResponseCode::Error(e) => match e {
+            FcmHttpResponseStatus::Ok |
+            FcmHttpResponseStatus::UnspecifiedError |
+            FcmHttpResponseStatus::Unknown { .. } => None,
+            FcmHttpResponseStatus::Error(e) => match e {
                 FcmHttpError::Unregistered => Some(RecomendedAction::RemoveFcmAppToken),
                 FcmHttpError::InvalidArgument => Some(RecomendedAction::FixMessageContent),
                 FcmHttpError::SenderIdMismatch =>
@@ -211,6 +238,7 @@ impl RecomendedAction<'_> {
     }
 }
 
+#[derive(Debug, Clone, PartialEq)]
 pub enum RecomendedWaitTime<'a> {
     /// Initial wait time for exponential back-off.
     ///

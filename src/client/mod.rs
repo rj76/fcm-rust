@@ -17,7 +17,7 @@ use std::time::Duration;
 
 use reqwest::header::RETRY_AFTER;
 
-use crate::client::response::{FcmResponse, RetryAfter, FcmHttpResponseCode};
+use crate::client::response::{FcmResponse, RetryAfter, FcmHttpResponseStatus};
 use crate::{Message, MessageWrapper};
 use oauth_client_impl::OauthClientImpl;
 
@@ -164,7 +164,6 @@ impl FcmClient {
             .build()?;
 
         let response = self.http_client.execute(request).await?;
-        let response_status: FcmHttpResponseCode = response.status().as_u16().into();
         let retry_after = response
             .headers()
             .get(RETRY_AFTER);
@@ -180,9 +179,16 @@ impl FcmClient {
         } else {
             None
         };
-        let response_json_object = response.json::<serde_json::Map<String, serde_json::Value>>().await
+        let http_status_code = response.status().as_u16();
+        // Return if I/O error occurs
+        let response_body = response.bytes().await?;
+        let response_json_object = serde_json::from_slice::<serde_json::Map<String, serde_json::Value>>(&response_body)
             .ok()
             .unwrap_or_default();
+        let response_status = FcmHttpResponseStatus::new(
+            http_status_code,
+            &response_json_object,
+        );
 
         Ok(FcmResponse::new(
             response_status,

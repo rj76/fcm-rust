@@ -4,7 +4,8 @@ use std::path::PathBuf;
 
 use clap::Parser;
 use fcm::{
-    FcmClient, Message, Notification, Target,
+    FcmClient,
+    message::{Message, Notification, Target},
 };
 use serde_json::json;
 

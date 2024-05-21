@@ -1,4 +1,4 @@
-use crate::Notification;
+use crate::message::Notification;
 use serde_json::json;
 
 #[test]

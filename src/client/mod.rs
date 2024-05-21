@@ -1,10 +1,10 @@
 pub(crate) mod response;
 
 #[cfg(feature = "gauth")]
-pub(crate) mod oauth_gauth;
+pub mod oauth_gauth;
 
 #[cfg(feature = "yup-oauth2")]
-pub(crate) mod oauth_yup_oauth2;
+pub mod oauth_yup_oauth2;
 
 use std::path::{Path, PathBuf};
 use std::time::Duration;
@@ -12,7 +12,7 @@ use std::time::Duration;
 use reqwest::header::RETRY_AFTER;
 
 use crate::client::response::{FcmResponse, RetryAfter, FcmHttpResponseStatus};
-use crate::{Message, MessageWrapper};
+use crate::message::{Message, MessageWrapper};
 
 #[cfg(feature = "gauth")]
 pub type DefaultOauthClient = oauth_gauth::Gauth;

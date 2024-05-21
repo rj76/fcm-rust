@@ -1,5 +1,5 @@
-pub mod fcm_options;
-pub mod target;
+pub(crate) mod fcm_options;
+pub(crate) mod target;
 
 #[cfg(test)]
 mod tests;
@@ -9,13 +9,25 @@ use serde::Serialize;
 use serde::Serializer;
 use serde_json::Value;
 
-use crate::android::android_config::AndroidConfig;
-use crate::apns::apns_config::ApnsConfig;
-use crate::notification::Notification;
-use crate::web::webpush_config::WebpushConfig;
+pub use crate::message::fcm_options::*;
+pub use crate::message::target::*;
 
-use self::fcm_options::FcmOptions;
-use self::target::Target;
+pub use crate::notification::*;
+
+pub use crate::android::android_config::*;
+pub use crate::android::android_fcm_options::*;
+pub use crate::android::android_message_priority::*;
+pub use crate::android::android_notification::*;
+pub use crate::android::color::*;
+pub use crate::android::light_settings::*;
+pub use crate::android::notification_priority::*;
+pub use crate::android::visibility::*;
+
+pub use crate::apns::apns_config::*;
+pub use crate::apns::apns_fcm_options::*;
+
+pub use crate::web::webpush_config::*;
+pub use crate::web::webpush_fcm_options::*;
 
 fn output_target<S>(target: &Target, s: S) -> Result<S::Ok, S::Error>
 where

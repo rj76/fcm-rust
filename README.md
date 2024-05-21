@@ -51,6 +51,8 @@ let client = fcm::FcmClient::builder()
 ### Construct a message
 
 ```rust
+use fcm::message::{Message, Notification, Target};
+
 // Replace "device_token" with the actual device token
 let device_token = "device_token".to_string();
 let message = Message {

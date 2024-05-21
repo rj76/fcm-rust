@@ -1,7 +1,7 @@
 use serde::Serialize;
 
 #[derive(Debug, Default, Serialize)]
-/// https://firebase.google.com/docs/reference/fcm/rest/v1/projects.messages?authuser=0#Color
+/// <https://firebase.google.com/docs/reference/fcm/rest/v1/projects.messages?authuser=0#Color>
 pub struct Color {
     /// The amount of red in the color as a value in the interval [0, 1].
     pub red: f32,

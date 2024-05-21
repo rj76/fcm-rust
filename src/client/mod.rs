@@ -100,7 +100,7 @@ impl FcmClientBuilder {
     /// Set timeout for FCM requests. Default is no timeout.
     ///
     /// Google recommends at least 10 minute timeout for FCM requests.
-    /// https://firebase.google.com/docs/cloud-messaging/scale-fcm#timeouts
+    /// <https://firebase.google.com/docs/cloud-messaging/scale-fcm#timeouts>
     pub fn fcm_request_timeout(mut self, fcm_request_timeout: Duration) -> Self {
         self.fcm_request_timeout = Some(fcm_request_timeout);
         self

@@ -7,7 +7,7 @@ use super::{
 };
 
 #[derive(Debug, Default, Serialize)]
-/// https://firebase.google.com/docs/reference/fcm/rest/v1/projects.messages?authuser=0#androidnotification
+/// <https://firebase.google.com/docs/reference/fcm/rest/v1/projects.messages?authuser=0#androidnotification>
 pub struct AndroidNotification {
     /// The notification's title.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -70,7 +70,7 @@ pub struct AndroidNotification {
     pub sticky: Option<bool>,
 
     /// Set the time that the event in the notification occurred. Notifications in the panel are sorted by this time.
-    /// Timestamp format: https://developers.google.com/protocol-buffers/docs/reference/google.protobuf?authuser=0#google.protobuf.Timestamp
+    /// Timestamp format: <https://developers.google.com/protocol-buffers/docs/reference/google.protobuf?authuser=0#google.protobuf.Timestamp>
     #[serde(skip_serializing_if = "Option::is_none")]
     pub event_time: Option<String>,
 
@@ -95,7 +95,7 @@ pub struct AndroidNotification {
     pub default_light_settings: Option<bool>,
 
     /// Set the vibration pattern to use
-    /// Duration format: https://developers.google.com/protocol-buffers/docs/reference/google.protobuf?authuser=0#google.protobuf.Duration
+    /// Duration format: <https://developers.google.com/protocol-buffers/docs/reference/google.protobuf?authuser=0#google.protobuf.Duration>
     #[serde(skip_serializing_if = "Option::is_none")]
     pub vibrate_timings: Option<Vec<String>>,
 

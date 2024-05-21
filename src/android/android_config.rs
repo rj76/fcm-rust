@@ -8,7 +8,7 @@ use super::{
 };
 
 #[derive(Debug, Default, Serialize)]
-/// https://firebase.google.com/docs/reference/fcm/rest/v1/projects.messages?authuser=0#androidconfig
+/// <https://firebase.google.com/docs/reference/fcm/rest/v1/projects.messages?authuser=0#androidconfig>
 pub struct AndroidConfig {
     /// An identifier of a group of messages that can be collapsed, so that only the last message gets
     /// sent when delivery can be resumed.
@@ -20,7 +20,7 @@ pub struct AndroidConfig {
     pub priority: Option<AndroidMessagePriority>,
 
     /// How long (in seconds) the message should be kept in FCM storage if the device is offline.
-    /// Duration format: https://developers.google.com/protocol-buffers/docs/reference/google.protobuf?authuser=0#google.protobuf.Duration
+    /// Duration format: <https://developers.google.com/protocol-buffers/docs/reference/google.protobuf?authuser=0#google.protobuf.Duration>
     #[serde(skip_serializing_if = "Option::is_none")]
     pub ttl: Option<String>,
 

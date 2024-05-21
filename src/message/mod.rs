@@ -32,7 +32,7 @@ where
 
 #[derive(Debug, Serialize)]
 /// A `Message` instance is the main object to send to the FCM API.
-/// https://firebase.google.com/docs/reference/fcm/rest/v1/projects.messages?authuser=0#resource:-message
+/// <https://firebase.google.com/docs/reference/fcm/rest/v1/projects.messages?authuser=0#resource:-message>
 pub struct Message {
     /// Arbitrary key/value payload, which must be UTF-8 encoded. Values must be strings.
     #[serde(skip_serializing_if = "Option::is_none")]

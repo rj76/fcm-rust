@@ -4,7 +4,7 @@ mod tests;
 use serde::Serialize;
 
 #[derive(Debug, Default, Serialize)]
-/// https://firebase.google.com/docs/reference/fcm/rest/v1/projects.messages?authuser=0#notification
+/// <https://firebase.google.com/docs/reference/fcm/rest/v1/projects.messages?authuser=0#notification>
 pub struct Notification {
     /// The notification's title.
     #[serde(skip_serializing_if = "Option::is_none")]

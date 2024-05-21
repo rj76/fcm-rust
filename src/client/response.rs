@@ -4,7 +4,7 @@ use chrono::Utc;
 use std::time::Duration;
 use std::{convert::{TryFrom, TryInto}, str::FromStr};
 
-/// Check https://firebase.google.com/docs/reference/fcm/rest/v1/ErrorCode
+/// Check <https://firebase.google.com/docs/reference/fcm/rest/v1/ErrorCode>
 /// for more information.
 #[derive(Debug, Clone, Copy, PartialEq)]
 #[repr(u16)]
@@ -138,8 +138,8 @@ impl FcmResponse {
 
 /// Action which server or developer should do based on the [FcmResponse].
 ///
-/// Check https://firebase.google.com/docs/reference/fcm/rest/v1/ErrorCode
-/// and https://firebase.google.com/docs/cloud-messaging/scale-fcm#handling-retries
+/// Check <https://firebase.google.com/docs/reference/fcm/rest/v1/ErrorCode>
+/// and <https://firebase.google.com/docs/cloud-messaging/scale-fcm#handling-retries>
 /// for more details.
 pub enum RecomendedAction<'a> {
     /// Error [FcmHttpError::Unregistered] was received.

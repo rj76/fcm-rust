@@ -8,7 +8,7 @@ use yup_oauth2::ServiceAccountAuthenticator;
 use super::{OauthClient, OauthErrorInfo, FIREBASE_OAUTH_SCOPE};
 
 #[derive(thiserror::Error, Debug)]
-pub enum FcmOauthError {
+pub enum YupOauth2Error {
     #[error("Service account key reading failed: {0}")]
     ServiceAccountKeyReadingFailed(std::io::Error),
     #[error("OAuth error: {0}")]
@@ -21,33 +21,33 @@ pub enum FcmOauthError {
     ProjectIdIsMissing,
 }
 
-impl OauthErrorInfo for FcmOauthError {
+impl OauthErrorInfo for YupOauth2Error {
     fn is_access_token_missing_even_if_server_requests_completed(&self) -> bool {
         matches!(
             self,
-            FcmOauthError::AccessTokenIsMissing |
-            FcmOauthError::Oauth(yup_oauth2::Error::AuthError(_))
+            YupOauth2Error::AccessTokenIsMissing |
+            YupOauth2Error::Oauth(yup_oauth2::Error::AuthError(_))
         )
     }
 }
 
-pub struct OauthClientImpl {
+pub struct YupOauth2 {
     authenticator: Authenticator<HttpsConnector<HttpConnector>>,
     project_id: String,
 }
 
-impl OauthClient for OauthClientImpl {
-    type Error = FcmOauthError;
+impl OauthClient for YupOauth2 {
+    type Error = YupOauth2Error;
 
     async fn create_with_key_file(
         service_account_key_path: PathBuf,
         token_cache_json_path: Option<PathBuf>,
-    ) -> Result<Self, FcmOauthError> {
+    ) -> Result<Self, YupOauth2Error> {
         let key = yup_oauth2::read_service_account_key(service_account_key_path)
             .await
-            .map_err(FcmOauthError::ServiceAccountKeyReadingFailed)?;
+            .map_err(YupOauth2Error::ServiceAccountKeyReadingFailed)?;
         let oauth_client = DefaultHyperClient.build_hyper_client()
-            .map_err(FcmOauthError::Oauth)?;
+            .map_err(YupOauth2Error::Oauth)?;
         let builder = ServiceAccountAuthenticator::with_client(key.clone(), oauth_client);
         let builder = if let Some(path) = token_cache_json_path {
             builder.persist_tokens_to_disk(path)
@@ -56,22 +56,22 @@ impl OauthClient for OauthClientImpl {
         };
         let authenticator = builder.build()
             .await
-            .map_err(FcmOauthError::AuthenticatorCreatingFailed)?;
+            .map_err(YupOauth2Error::AuthenticatorCreatingFailed)?;
 
         let project_id = key.project_id
-            .ok_or(FcmOauthError::ProjectIdIsMissing)?;
+            .ok_or(YupOauth2Error::ProjectIdIsMissing)?;
 
-        Ok(OauthClientImpl {
+        Ok(YupOauth2 {
             authenticator,
             project_id,
         })
     }
 
-    async fn get_access_token(&self) -> Result<String, FcmOauthError> {
+    async fn get_access_token(&self) -> Result<String, YupOauth2Error> {
         let scopes = [FIREBASE_OAUTH_SCOPE];
         let access_token = self.authenticator.token(&scopes).await?;
         let access_token = access_token.token()
-            .ok_or(FcmOauthError::AccessTokenIsMissing)?;
+            .ok_or(YupOauth2Error::AccessTokenIsMissing)?;
 
         Ok(access_token.to_string())
     }

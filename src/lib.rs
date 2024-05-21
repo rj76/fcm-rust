@@ -74,3 +74,9 @@ pub use crate::web::webpush_fcm_options::*;
 mod client;
 pub use crate::client::response::*;
 pub use crate::client::*;
+
+#[cfg(feature = "gauth")]
+pub use crate::client::oauth_gauth::*;
+
+#[cfg(feature = "yup-oauth2")]
+pub use crate::client::oauth_yup_oauth2::*;

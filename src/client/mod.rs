@@ -1,16 +1,10 @@
 pub(crate) mod response;
 
 #[cfg(feature = "gauth")]
-mod oauth_gauth;
+pub(crate) mod oauth_gauth;
 
 #[cfg(feature = "yup-oauth2")]
-mod oauth_yup_oauth2;
-
-#[cfg(feature = "gauth")]
-use oauth_gauth as oauth_client_impl;
-
-#[cfg(all(feature = "yup-oauth2", not(feature = "gauth")))]
-use oauth_yup_oauth2 as oauth_client_impl;
+pub(crate) mod oauth_yup_oauth2;
 
 use std::path::{Path, PathBuf};
 use std::time::Duration;
@@ -19,18 +13,21 @@ use reqwest::header::RETRY_AFTER;
 
 use crate::client::response::{FcmResponse, RetryAfter, FcmHttpResponseStatus};
 use crate::{Message, MessageWrapper};
-use oauth_client_impl::OauthClientImpl;
 
-pub use oauth_client_impl::FcmOauthError;
+#[cfg(feature = "gauth")]
+pub type DefaultOauthClient = oauth_gauth::Gauth;
+
+#[cfg(all(feature = "yup-oauth2", not(feature = "gauth")))]
+pub type DefaultOauthClient = oauth_yup_oauth2::YupOauth2;
 
 const FIREBASE_OAUTH_SCOPE: &str = "https://www.googleapis.com/auth/firebase.messaging";
 
 #[derive(thiserror::Error, Debug)]
-pub enum FcmClientError {
+pub enum FcmClientError<T: OauthErrorInfo = <DefaultOauthClient as OauthClient>::Error> {
     #[error("Reqwest error: {0}")]
     Reqwest(#[from] reqwest::Error),
     #[error("OAuth error: {0}")]
-    Oauth(#[from] FcmOauthError),
+    Oauth(T),
     #[error("Dotenv error: {0}")]
     Dotenv(#[from] dotenv::Error),
     #[error("Retry-After HTTP header value is not valid string")]
@@ -42,9 +39,9 @@ pub enum FcmClientError {
     },
 }
 
-impl FcmClientError {
+#[cfg(feature = "yup-oauth2")]
+impl FcmClientError<oauth_yup_oauth2::YupOauth2Error> {
     /// If this is `true` then most likely current service key is invalid.
-    #[cfg(all(feature = "yup-oauth2", not(feature = "gauth")))]
     pub fn is_access_token_missing_even_if_server_requests_completed(&self) -> bool {
         match self {
             FcmClientError::Oauth(error) =>
@@ -54,32 +51,35 @@ impl FcmClientError {
     }
 }
 
-trait OauthClient: Sized {
-    type Error;
+pub trait OauthClient: Sized {
+    type Error: OauthErrorInfo;
 
-    async fn create_with_key_file(
+    fn create_with_key_file(
         service_account_key_path: PathBuf,
         token_cache_json_path: Option<PathBuf>,
-    ) -> Result<Self, Self::Error>;
+    ) -> impl std::future::Future<Output = Result<Self, Self::Error>> + Send;
 
-    async fn get_access_token(&self) -> Result<String, Self::Error>;
+    fn get_access_token(
+        &self
+    ) -> impl std::future::Future<Output = Result<String, Self::Error>> + Send;
 
     fn get_project_id(&self) -> &str;
 }
 
-trait OauthErrorInfo {
+pub trait OauthErrorInfo: std::error::Error {
     /// If this is `true` then most likely current service key is invalid.
     fn is_access_token_missing_even_if_server_requests_completed(&self) -> bool;
 }
 
-#[derive(Debug, Default, Clone)]
-pub struct FcmClientBuilder {
+#[derive(Debug, Clone)]
+pub struct FcmClientBuilder<T: OauthClient> {
     service_account_key_json_path: Option<PathBuf>,
     token_cache_json_path: Option<PathBuf>,
     fcm_request_timeout: Option<Duration>,
+    _phantom: std::marker::PhantomData<T>,
 }
 
-impl FcmClientBuilder {
+impl <T: OauthClient> FcmClientBuilder<T> {
     pub fn new() -> Self {
         Self::default()
     }
@@ -92,13 +92,6 @@ impl FcmClientBuilder {
         self
     }
 
-    /// Set path to the token cache JSON file. Default is no token cache JSON file.
-    #[cfg(feature = "yup-oauth2")]
-    pub fn token_cache_json_path(mut self, token_cache_json_path: impl AsRef<Path>) -> Self {
-        self.token_cache_json_path = Some(token_cache_json_path.as_ref().to_path_buf());
-        self
-    }
-
     /// Set timeout for FCM requests. Default is no timeout.
     ///
     /// Google recommends at least 10 minute timeout for FCM requests.
@@ -108,25 +101,47 @@ impl FcmClientBuilder {
         self
     }
 
-    pub async fn build(self) -> Result<FcmClient, FcmClientError> {
+    pub async fn build(self) -> Result<FcmClient<T>, FcmClientError<T::Error>> {
         FcmClient::new_from_builder(self).await
     }
 }
 
-/// An async client for sending the notification payload.
-pub struct FcmClient {
-    http_client: reqwest::Client,
-    oauth_client: OauthClientImpl,
+impl <T: OauthClient> Default for FcmClientBuilder<T> {
+    fn default() -> Self {
+        Self {
+            service_account_key_json_path: None,
+            token_cache_json_path: None,
+            fcm_request_timeout: None,
+            _phantom: std::marker::PhantomData,
+        }
+    }
 }
 
-impl FcmClient {
-    pub fn builder() -> FcmClientBuilder {
+#[cfg(feature = "yup-oauth2")]
+impl FcmClientBuilder<oauth_yup_oauth2::YupOauth2> {
+    /// Set path to the token cache JSON file. Default is no token cache JSON file.
+    pub fn token_cache_json_path(mut self, token_cache_json_path: impl AsRef<Path>) -> Self {
+        self.token_cache_json_path = Some(token_cache_json_path.as_ref().to_path_buf());
+        self
+    }
+}
+
+/// An async client for sending the notification payload.
+pub struct FcmClient<T: OauthClient = DefaultOauthClient> {
+    http_client: reqwest::Client,
+    oauth_client: T,
+}
+
+impl FcmClient<DefaultOauthClient> {
+    pub fn builder() -> FcmClientBuilder<DefaultOauthClient> {
         FcmClientBuilder::new()
     }
+}
 
+impl <T: OauthClient> FcmClient<T> {
     async fn new_from_builder(
-        fcm_builder: FcmClientBuilder,
-    ) -> Result<FcmClient, FcmClientError> {
+        fcm_builder: FcmClientBuilder<T>,
+    ) -> Result<Self, FcmClientError<T::Error>> {
         let builder = reqwest::ClientBuilder::new();
         let builder = if let Some(timeout) = fcm_builder.fcm_request_timeout {
             builder.timeout(timeout)
@@ -141,10 +156,12 @@ impl FcmClient {
             dotenv::var("GOOGLE_APPLICATION_CREDENTIALS")?.into()
         };
 
-        let oauth_client = OauthClientImpl::create_with_key_file(
+        let oauth_client = T::create_with_key_file(
             service_account_key_path,
             fcm_builder.token_cache_json_path,
-        ).await?;
+        )
+            .await
+            .map_err(FcmClientError::Oauth)?;
 
         Ok(FcmClient {
             http_client,
@@ -152,8 +169,10 @@ impl FcmClient {
         })
     }
 
-    pub async fn send(&self, message: Message) -> Result<FcmResponse, FcmClientError> {
-        let access_token = self.oauth_client.get_access_token().await?;
+    pub async fn send(&self, message: Message) -> Result<FcmResponse, FcmClientError<T::Error>> {
+        let access_token = self.oauth_client.get_access_token()
+            .await
+            .map_err(FcmClientError::Oauth)?;
 
         // https://firebase.google.com/docs/reference/fcm/rest/v1/projects.messages/send
         let url = format!("https://fcm.googleapis.com/v1/projects/{}/messages:send", self.oauth_client.get_project_id());

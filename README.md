@@ -23,7 +23,8 @@ Add the following to your `Cargo.toml` file:
 fcm = { git = "https://github.com/rj76/fcm-rust.git" }
 ```
 
-Then, you need to add the credentials described in the [Credentials](#credentials) to a `.env` file at the root of your project.
+Optionally, add the credentials described in the [Credentials](#credentials)
+to a `.env` file at the root of your project.
 
 ## Usage
 
@@ -38,58 +39,69 @@ use fcm;
 ### Create a client instance
 
 ```rust
-let client = fcm::Client::new();
+let client = fcm::FcmClient::builder()
+    // Comment to use GOOGLE_APPLICATION_CREDENTIALS environment
+    // variable. The variable can also be defined in .env file.
+    .service_account_key_json_path("service_account_key.json")
+    .build()
+    .await
+    .unwrap();
 ```
 
 ### Construct a message
 
 ```rust
-let message = fcm::Message {
-    data: None,
+// Replace "device_token" with the actual device token
+let device_token = "device_token".to_string();
+let message = Message {
+    data: Some(json!({
+       "message": "Howdy!",
+    })),
     notification: Some(Notification {
-        title: Some("I'm high".to_string()),
+        title: Some("Hello".to_string()),
         body: Some(format!("it's {}", chrono::Utc::now())),
-        ..Default::default()
+        image: None,
     }),
     target: Target::Token(device_token),
-    fcm_options: Some(FcmOptions {
-        analytics_label: "analytics_label".to_string(),
-    }),
-    android: Some(AndroidConfig {
-        priority: Some(fcm::AndroidMessagePriority::High),
-        notification: Some(AndroidNotification {
-            title: Some("I'm Android high".to_string()),
-            body: Some(format!("Hi Android, it's {}", chrono::Utc::now())),
-            ..Default::default()
-        }),
-        ..Default::default()
-    }),
-    apns: Some(ApnsConfig { ..Default::default() }),
-    webpush: Some(WebpushConfig { ..Default::default() }),
-}
+    android: None,
+    webpush: None,
+    apns: None,
+    fcm_options: None,
+};
 ```
 
 ### Send the message
 
 ```rust
-let response = client.send(message).await?;
+let response = client.send(message).await.unwrap();
 ```
 
 # Credentials
 
-This library expects the Google credentials JSON location to be 
-defined as `GOOGLE_APPLICATION_CREDENTIALS` in the `.env` file.
-Please follow the instructions in the [Firebase Documentation](https://firebase.google.com/docs/cloud-messaging/auth-server#provide-credentials-manually) to create a service account.
+If client is not configured with service account key JSON file path
+then this library expects the Google credentials JSON location to be
+defined in `GOOGLE_APPLICATION_CREDENTIALS` environment variable.
+The variable definition can also be located in the `.env` file.
+
+Please follow the instructions in the
+[Firebase Documentation](https://firebase.google.com/docs/cloud-messaging/auth-server#provide-credentials-manually)
+to create a service account key JSON file.
 
 ## Examples
 
-For a complete usage example, you may check out the [`simple_sender`](examples/simple_sender.rs) example.
+For a complete usage example, you may check out the
+[`simple_sender`](examples/simple_sender.rs) example.
 
-To run the example, first of all clone the [`.env.example`](.env.example) file to `.env` and fill in the required values.
+The example can be run with
+```
+cargo run --example simple_sender -- -t <device_token> -k <service_account_key_path>
+```
 
-You can find info about the required credentials in the [Credentials](#credentials) section.
+If `GOOGLE_APPLICATION_CREDENTIALS` environment variable is defined in current
+environment or in `.env` file, then the example can be run with
+```
+cargo run --example simple_sender -- -t <device_token>
+```
 
-Then run the example with `cargo run --example simple_sender -- -t <device_token>`
-
-
-
+To define the environment variable using `.env` file copy the [`.env.example`](.env.example)
+file to `.env` and fill in the required values.

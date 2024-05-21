@@ -15,7 +15,7 @@ struct CliArgs {
     /// Set path to the service account key JSON file. Default is to use
     /// path from the `GOOGLE_APPLICATION_CREDENTIALS` environment variable
     /// (which can be also located in `.env` file).
-    #[arg(long, value_name = "FILE")]
+    #[arg(short = 'k', long, value_name = "FILE")]
     service_account_key_path: Option<PathBuf>,
 }
 

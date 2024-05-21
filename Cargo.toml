@@ -16,19 +16,25 @@ keywords = ["fcm", "firebase", "notification"]
 edition = "2018"
 
 [features]
-default = ["native-tls"]
+default = ["native-tls", "gauth"]
+
 native-tls = ["reqwest/native-tls"]
 rustls = ["reqwest/rustls-tls"]
 vendored-tls = ["reqwest/native-tls-vendored"]
 
+gauth = ["dep:gauth"]
+yup-oauth2 = ["dep:yup-oauth2"]
+
 [dependencies]
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", features = ["preserve_order"] }
-reqwest = { version = "0.11.0", features = ["json"], default-features=false }
+reqwest = { version = "0.11.0", features = ["json"], default-features = false }
 chrono = "0.4"
-yup-oauth2 = "9.0.0"
 thiserror = "1.0.61"
 dotenv = "0.15.0"
+
+gauth = { version = "0.7.0", optional = true }
+yup-oauth2 = { version = "9.0.0", optional = true }
 
 [dev-dependencies]
 tokio = { version = "1.0", features = ["rt-multi-thread", "macros"] }

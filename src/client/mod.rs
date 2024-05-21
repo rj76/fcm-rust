@@ -28,8 +28,8 @@ pub enum FcmClientError<T: OauthError = <DefaultOauthClient as OauthClient>::Err
     Reqwest(#[from] reqwest::Error),
     #[error("OAuth error: {0}")]
     Oauth(T),
-    #[error("Dotenv error: {0}")]
-    Dotenv(#[from] dotenv::Error),
+    #[error("Dotenvy error: {0}")]
+    Dotenvy(#[from] dotenvy::Error),
     #[error("Retry-After HTTP header value is not valid string")]
     RetryAfterHttpHeaderIsNotString,
     #[error("Retry-After HTTP header value is not valid, error: {error}, value: {value}")]
@@ -156,7 +156,7 @@ impl <T: OauthClient> FcmClient<T> {
         let service_account_key_path = if let Some(path) = fcm_builder.service_account_key_json_path {
             path
         } else {
-            dotenv::var("GOOGLE_APPLICATION_CREDENTIALS")?.into()
+            dotenvy::var("GOOGLE_APPLICATION_CREDENTIALS")?.into()
         };
 
         let oauth_client = T::create_with_key_file(

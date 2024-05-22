@@ -2,7 +2,7 @@ use std::path::{Path, PathBuf};
 
 use gauth::serv_account::ServiceAccount;
 
-use super::{OauthClient, OauthError, FIREBASE_OAUTH_SCOPE};
+use super::{OauthClient, OauthClientInternal, OauthError, FIREBASE_OAUTH_SCOPE};
 
 #[derive(thiserror::Error, Debug)]
 pub enum GauthError {
@@ -27,7 +27,9 @@ pub struct Gauth {
 
 impl OauthClient for Gauth {
     type Error = GauthError;
+}
 
+impl OauthClientInternal for Gauth {
     async fn create_with_key_file(
         service_account_key_path: PathBuf,
         _token_cache_json_path: Option<PathBuf>,

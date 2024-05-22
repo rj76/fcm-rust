@@ -5,7 +5,7 @@ use yup_oauth2::hyper::client::HttpConnector;
 use yup_oauth2::hyper_rustls::HttpsConnector;
 use yup_oauth2::ServiceAccountAuthenticator;
 
-use super::{OauthClient, OauthError, OauthErrorAccessTokenStatus, FIREBASE_OAUTH_SCOPE};
+use super::{OauthClient, OauthClientInternal, OauthError, OauthErrorAccessTokenStatus, FIREBASE_OAUTH_SCOPE};
 
 #[derive(thiserror::Error, Debug)]
 pub enum YupOauth2Error {
@@ -43,7 +43,9 @@ pub struct YupOauth2 {
 
 impl OauthClient for YupOauth2 {
     type Error = YupOauth2Error;
+}
 
+impl OauthClientInternal for YupOauth2 {
     async fn create_with_key_file(
         service_account_key_path: PathBuf,
         token_cache_json_path: Option<PathBuf>,

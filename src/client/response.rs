@@ -79,14 +79,17 @@ pub enum RetryAfter {
 impl RetryAfter {
     /// Wait time calculated from current operating system time.
     pub fn wait_time(&self) -> Duration {
-        self.wait_time_with_current_time(Utc::now().fixed_offset())
+        self.wait_time_with_time_provider(|| Utc::now().fixed_offset())
     }
 
-    fn wait_time_with_current_time(&self, now: DateTime<FixedOffset>) -> Duration {
+    fn wait_time_with_time_provider(
+        &self,
+        get_time: impl FnOnce() -> DateTime<FixedOffset>,
+    ) -> Duration {
         match *self {
             RetryAfter::Delay(duration) => duration,
             RetryAfter::DateTime(date_time) =>
-                (date_time - now)
+                (date_time - get_time())
                     .to_std()
                     // TimeDelta is negative when the date_time is in the
                     // past. In that case wait time is 0.
@@ -267,7 +270,7 @@ mod tests {
         let expected_wait_time = Duration::from_secs(1);
         let expected = RetryAfter::Delay(expected_wait_time);
         assert_eq!(expected, "1".parse().unwrap());
-        assert_eq!(expected_wait_time, expected.wait_time_with_current_time(DateTime::default()));
+        assert_eq!(expected_wait_time, expected.wait_time_with_time_provider(DateTime::default));
     }
 
     #[test]
@@ -283,7 +286,7 @@ mod tests {
 
         assert_eq!(
             Duration::ZERO,
-            retry_after.wait_time_with_current_time(date_time),
+            retry_after.wait_time_with_time_provider(|| date_time),
         );
     }
 
@@ -296,7 +299,7 @@ mod tests {
 
         assert_eq!(
             Duration::from_secs(0),
-            retry_after.wait_time_with_current_time(future_date_time),
+            retry_after.wait_time_with_time_provider(|| future_date_time),
         );
     }
 
@@ -309,7 +312,7 @@ mod tests {
 
         assert_eq!(
             Duration::from_secs(1),
-            retry_after.wait_time_with_current_time(past_date_time),
+            retry_after.wait_time_with_time_provider(|| past_date_time),
         );
     }
 
@@ -322,7 +325,7 @@ mod tests {
 
         assert_eq!(
             Duration::from_secs(60 * 60),
-            retry_after.wait_time_with_current_time(past_date_time),
+            retry_after.wait_time_with_time_provider(|| past_date_time),
         );
     }
 }

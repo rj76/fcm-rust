@@ -1,6 +1,6 @@
 use reqwest::header::RETRY_AFTER;
 
-use crate::{message::{Message, MessageWrapper}, FcmClientBuilder, FcmClientError, FcmHttpResponseStatus, FcmResponse, OauthClient, RetryAfter};
+use crate::{message::{Message, MessageWrapper}, FcmClientBuilder, FcmClientError, FcmResponse, OauthClient, RetryAfter};
 
 use super::OauthClientInternal;
 
@@ -79,13 +79,9 @@ impl <T: OauthClientInternal> FcmClientInternal<T> {
         let response_json_object = serde_json::from_slice::<serde_json::Map<String, serde_json::Value>>(&response_body)
             .ok()
             .unwrap_or_default();
-        let response_status = FcmHttpResponseStatus::new(
-            http_status_code,
-            &response_json_object,
-        );
 
         Ok(FcmResponse::new(
-            response_status,
+            http_status_code,
             response_json_object,
             retry_after,
         ))

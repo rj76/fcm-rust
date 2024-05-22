@@ -21,18 +21,27 @@ impl <T: OauthClientInternal> FcmClientInternal<T> {
         };
         let http_client = builder.build()?;
 
-        let service_account_key_path = if let Some(path) = fcm_builder.service_account_key_json_path {
-            path
+        let oauth_client = if let Some(key_json) = fcm_builder.service_account_key_json_string {
+            T::create_with_string_key(
+                key_json,
+                fcm_builder.token_cache_json_path,
+            )
+                .await
+                .map_err(FcmClientError::Oauth)?
         } else {
-            dotenvy::var("GOOGLE_APPLICATION_CREDENTIALS")?.into()
-        };
+            let service_account_key_path = if let Some(path) = fcm_builder.service_account_key_json_path {
+                path
+            } else {
+                dotenvy::var("GOOGLE_APPLICATION_CREDENTIALS")?.into()
+            };
 
-        let oauth_client = T::create_with_key_file(
-            service_account_key_path,
-            fcm_builder.token_cache_json_path,
-        )
-            .await
-            .map_err(FcmClientError::Oauth)?;
+            T::create_with_key_file(
+                service_account_key_path,
+                fcm_builder.token_cache_json_path,
+            )
+                .await
+                .map_err(FcmClientError::Oauth)?
+        };
 
         Ok(FcmClientInternal {
             http_client,

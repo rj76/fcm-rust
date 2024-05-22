@@ -42,6 +42,13 @@ impl OauthClientInternal for Gauth {
         })
     }
 
+    async fn create_with_string_key(
+        _service_account_key_json_string: String,
+        _token_cache_json_path: Option<PathBuf>,
+    ) -> Result<Self, GauthError> {
+        unimplemented!()
+    }
+
     async fn get_access_token(&self) -> Result<String, GauthError> {
         let scopes = vec![FIREBASE_OAUTH_SCOPE];
         let mut service_account = ServiceAccount::from_file(&self.service_account_key_path, scopes);

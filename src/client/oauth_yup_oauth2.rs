@@ -50,8 +50,16 @@ impl OauthClientInternal for YupOauth2 {
         service_account_key_path: PathBuf,
         token_cache_json_path: Option<PathBuf>,
     ) -> Result<Self, YupOauth2Error> {
-        let key = yup_oauth2::read_service_account_key(service_account_key_path)
-            .await
+        let file = tokio::fs::read_to_string(&service_account_key_path).await
+            .map_err(YupOauth2Error::ServiceAccountKeyReadingFailed)?;
+        Self::create_with_string_key(file, token_cache_json_path).await
+    }
+
+    async fn create_with_string_key(
+        service_account_key_json_string: String,
+        token_cache_json_path: Option<PathBuf>,
+    ) -> Result<Self, YupOauth2Error> {
+        let key = yup_oauth2::parse_service_account_key(service_account_key_json_string)
             .map_err(YupOauth2Error::ServiceAccountKeyReadingFailed)?;
         let oauth_client = DefaultHyperClient.build_hyper_client()
             .map_err(YupOauth2Error::Oauth)?;

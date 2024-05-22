@@ -62,6 +62,11 @@ pub(crate) trait OauthClientInternal: OauthClient + Sized {
         token_cache_json_path: Option<PathBuf>,
     ) -> impl std::future::Future<Output = Result<Self, Self::Error>> + Send;
 
+    fn create_with_string_key(
+        service_account_key_json_string: String,
+        token_cache_json_path: Option<PathBuf>,
+    ) -> impl std::future::Future<Output = Result<Self, Self::Error>> + Send;
+
     fn get_access_token(
         &self
     ) -> impl std::future::Future<Output = Result<String, Self::Error>> + Send;
@@ -79,6 +84,7 @@ pub trait OauthErrorAccessTokenStatus: OauthError {
 
 #[derive(Debug, Clone)]
 pub struct FcmClientBuilder<T: OauthClient> {
+    service_account_key_json_string: Option<String>,
     service_account_key_json_path: Option<PathBuf>,
     token_cache_json_path: Option<PathBuf>,
     fcm_request_timeout: Option<Duration>,
@@ -88,6 +94,7 @@ pub struct FcmClientBuilder<T: OauthClient> {
 impl <T: OauthClient> Default for FcmClientBuilder<T> {
     fn default() -> Self {
         Self {
+            service_account_key_json_string: None,
             service_account_key_json_path: None,
             token_cache_json_path: None,
             fcm_request_timeout: None,
@@ -133,6 +140,16 @@ impl FcmClientBuilder<oauth_yup_oauth2::YupOauth2> {
     /// Set path to the token cache JSON file. Default is no token cache JSON file.
     pub fn token_cache_json_path(mut self, token_cache_json_path: impl AsRef<Path>) -> Self {
         self.token_cache_json_path = Some(token_cache_json_path.as_ref().to_path_buf());
+        self
+    }
+
+    /// Set service account key JSON. Default is to use
+    /// path from the `GOOGLE_APPLICATION_CREDENTIALS` environment variable
+    /// (which can be also located in `.env` file).
+    ///
+    /// This overrides `service_account_key_json_path`.
+    pub fn service_account_key_json_string(mut self, service_account_key_json_string: impl Into<String>) -> Self {
+        self.service_account_key_json_string = Some(service_account_key_json_string.into());
         self
     }
 

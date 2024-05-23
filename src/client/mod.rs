@@ -118,7 +118,8 @@ impl <T: OauthClient> FcmClientBuilder<T> {
 
     /// Set timeout for FCM requests. Default is no timeout.
     ///
-    /// Google recommends at least 10 minute timeout for FCM requests.
+    /// If this is set the value should be at least 10 seconds as FCM
+    /// docs have that value as the minimum timeout.
     /// <https://firebase.google.com/docs/cloud-messaging/scale-fcm#timeouts>
     pub fn fcm_request_timeout(mut self, fcm_request_timeout: Duration) -> Self {
         self.fcm_request_timeout = Some(fcm_request_timeout);

@@ -75,14 +75,20 @@ pub struct Message {
     pub target: Target,
 }
 
-/// Wrap the message in a "message" field
-#[derive(Serialize)]
-pub(crate) struct MessageWrapper {
-    message: Message,
+impl AsRef<Message> for Message {
+    fn as_ref(&self) -> &Message {
+        self
+    }
 }
 
-impl MessageWrapper {
-    pub fn new(message: Message) -> MessageWrapper {
+/// Wrap the message in a "message" field
+#[derive(Serialize)]
+pub(crate) struct MessageWrapper<'a> {
+    message: &'a Message,
+}
+
+impl MessageWrapper<'_> {
+    pub fn new(message: &Message) -> MessageWrapper {
         MessageWrapper { message }
     }
 }

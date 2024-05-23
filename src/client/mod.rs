@@ -173,14 +173,14 @@ impl FcmClient<DefaultOauthClient> {
 
 #[cfg(feature = "gauth")]
 impl FcmClient<oauth_gauth::Gauth> {
-    pub async fn send(&self, message: Message) -> Result<FcmResponse, FcmClientError<<oauth_gauth::Gauth as OauthClient>::Error>> {
+    pub async fn send(&self, message: impl AsRef<Message>) -> Result<FcmResponse, FcmClientError<<oauth_gauth::Gauth as OauthClient>::Error>> {
         self.internal_client.send(message).await
     }
 }
 
 #[cfg(feature = "yup-oauth2")]
 impl FcmClient<oauth_yup_oauth2::YupOauth2> {
-    pub async fn send(&self, message: Message) -> Result<FcmResponse, FcmClientError<<oauth_yup_oauth2::YupOauth2 as OauthClient>::Error>> {
+    pub async fn send(&self, message: impl AsRef<Message>) -> Result<FcmResponse, FcmClientError<<oauth_yup_oauth2::YupOauth2 as OauthClient>::Error>> {
         self.internal_client.send(message).await
     }
 }

@@ -51,7 +51,7 @@ impl <T: OauthClientInternal> FcmClientInternal<T> {
 }
 
 impl <T: OauthClientInternal> FcmClientInternal<T> {
-    pub async fn send(&self, message: Message) -> Result<FcmResponse, FcmClientError<T::Error>> {
+    pub async fn send(&self, message: impl AsRef<Message>) -> Result<FcmResponse, FcmClientError<T::Error>> {
         let access_token = self.oauth_client.get_access_token()
             .await
             .map_err(FcmClientError::Oauth)?;
@@ -63,7 +63,7 @@ impl <T: OauthClientInternal> FcmClientInternal<T> {
             .http_client
             .post(&url)
             .bearer_auth(access_token)
-            .json(&MessageWrapper::new(message))
+            .json(&MessageWrapper::new(message.as_ref()))
             .build()?;
 
         let response = self.http_client.execute(request).await?;

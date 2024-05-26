@@ -1,6 +1,6 @@
 pub(crate) mod response;
 
-mod oauth_yup_oauth2;
+mod oauth;
 
 use std::path::{Path, PathBuf};
 use std::time::Duration;
@@ -11,9 +11,9 @@ use crate::client::response::FcmResponse;
 use crate::message::{Message, MessageWrapper};
 use crate::RetryAfter;
 
-use self::oauth_yup_oauth2::OauthClient;
+use self::oauth::OauthClient;
 
-pub use self::oauth_yup_oauth2::OauthError;
+pub use self::oauth::OauthError;
 
 #[derive(thiserror::Error, Debug)]
 pub enum FcmClientError {

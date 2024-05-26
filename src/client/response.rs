@@ -38,14 +38,42 @@ impl FcmResponseError {
     ) -> Option<Self> {
         if let Ok(error) = http_status_code.try_into() {
             Some(error)
-        } else if let Some("UNSPECIFIED_ERROR") = response_json.get("error_code").and_then(|v| v.as_str()) {
+        } else if Self::get_error(response_json) == Some("UNSPECIFIED_ERROR") {
             Some(Self::Unspecified)
+        } else if response_json.get("name").is_none() {
+            Some(Self::Unknown)
         } else {
-            match response_json.get("name") {
-                Some(_) => None, // No error
-                None => Some(Self::Unknown),
-            }
+            None // No error
         }
+    }
+
+    fn get_error(
+        response_json: &serde_json::Map<String, serde_json::Value>,
+    ) -> Option<&str> {
+        Self::get_error_using_api_reference(response_json)
+            .or_else(|| Self::get_error_using_real_response(response_json))
+    }
+
+    /// Currently (2024-05-26) FCM API response JSON does not have
+    /// this location for INVALID_ARGUMENT error.
+    fn get_error_using_api_reference(
+        response_json: &serde_json::Map<String, serde_json::Value>,
+    ) -> Option<&str> {
+        response_json
+            .get("error_code")
+            .and_then(|v| v.as_str())
+    }
+
+    /// Current (2024-05-26) FCM API response JSON location for
+    /// INVALID_ARGUMENT error and possibly for the other errors
+    /// as well.
+    fn get_error_using_real_response(
+        response_json: &serde_json::Map<String, serde_json::Value>,
+    ) -> Option<&str> {
+        response_json
+            .get("error")
+            .and_then(|v| v.get("status"))
+            .and_then(|v| v.as_str())
     }
 }
 

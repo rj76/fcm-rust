@@ -47,10 +47,10 @@
 
 pub use yup_oauth2;
 
-pub mod message;
-pub(crate) mod notification;
 pub(crate) mod android;
 pub(crate) mod apns;
+pub mod message;
+pub(crate) mod notification;
 pub(crate) mod web;
 
 mod client;

@@ -4,8 +4,8 @@ use std::path::PathBuf;
 
 use clap::Parser;
 use fcm::{
-    FcmClient,
     message::{Message, Notification, Target},
+    FcmClient,
 };
 use serde_json::json;
 
@@ -30,9 +30,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         builder
     };
 
-    let client = builder.build()
-        .await
-        .unwrap();
+    let client = builder.build().await.unwrap();
 
     let message = Message {
         data: Some(json!({

@@ -2,8 +2,7 @@ use serde::Serialize;
 use serde_json::Value;
 
 use super::{
-    android_fcm_options::AndroidFcmOptions,
-    android_message_priority::AndroidMessagePriority,
+    android_fcm_options::AndroidFcmOptions, android_message_priority::AndroidMessagePriority,
     android_notification::AndroidNotification,
 };
 

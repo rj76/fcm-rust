@@ -1,10 +1,6 @@
 use serde::Serialize;
 
-use super::{
-    light_settings::LightSettings,
-    notification_priority::NotificationPriority,
-    visibility::Visibility,
-};
+use super::{light_settings::LightSettings, notification_priority::NotificationPriority, visibility::Visibility};
 
 #[derive(Debug, Default, Serialize)]
 /// <https://firebase.google.com/docs/reference/fcm/rest/v1/projects.messages?authuser=0#androidnotification>

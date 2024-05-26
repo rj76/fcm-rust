@@ -27,11 +27,8 @@ impl OauthError {
     pub(crate) fn is_access_token_missing_even_if_server_requests_completed(&self) -> bool {
         matches!(
             self,
-            OauthError::AccessTokenIsMissing |
-            OauthError::Oauth(
-                yup_oauth2::Error::MissingAccessToken |
-                yup_oauth2::Error::AuthError(_)
-            )
+            OauthError::AccessTokenIsMissing
+                | OauthError::Oauth(yup_oauth2::Error::MissingAccessToken | yup_oauth2::Error::AuthError(_))
         )
     }
 }
@@ -46,7 +43,8 @@ impl OauthClient {
         service_account_key_path: PathBuf,
         token_cache_json_path: Option<PathBuf>,
     ) -> Result<Self, OauthError> {
-        let file = tokio::fs::read_to_string(&service_account_key_path).await
+        let file = tokio::fs::read_to_string(&service_account_key_path)
+            .await
             .map_err(OauthError::ServiceAccountKeyReadingFailed)?;
         Self::create_with_string_key(file, token_cache_json_path).await
     }
@@ -57,20 +55,16 @@ impl OauthClient {
     ) -> Result<Self, OauthError> {
         let key = yup_oauth2::parse_service_account_key(service_account_key_json_string)
             .map_err(OauthError::ServiceAccountKeyReadingFailed)?;
-        let oauth_client = DefaultHyperClient.build_hyper_client()
-            .map_err(OauthError::Oauth)?;
+        let oauth_client = DefaultHyperClient.build_hyper_client().map_err(OauthError::Oauth)?;
         let builder = ServiceAccountAuthenticator::with_client(key.clone(), oauth_client);
         let builder = if let Some(path) = token_cache_json_path {
             builder.persist_tokens_to_disk(path)
         } else {
             builder
         };
-        let authenticator = builder.build()
-            .await
-            .map_err(OauthError::AuthenticatorCreatingFailed)?;
+        let authenticator = builder.build().await.map_err(OauthError::AuthenticatorCreatingFailed)?;
 
-        let project_id = key.project_id
-            .ok_or(OauthError::ProjectIdIsMissing)?;
+        let project_id = key.project_id.ok_or(OauthError::ProjectIdIsMissing)?;
 
         Ok(OauthClient {
             authenticator,
@@ -81,8 +75,7 @@ impl OauthClient {
     pub async fn get_access_token(&self) -> Result<String, OauthError> {
         let scopes = [FIREBASE_OAUTH_SCOPE];
         let access_token = self.authenticator.token(&scopes).await?;
-        let access_token = access_token.token()
-            .ok_or(OauthError::AccessTokenIsMissing)?;
+        let access_token = access_token.token().ok_or(OauthError::AccessTokenIsMissing)?;
 
         Ok(access_token.to_string())
     }

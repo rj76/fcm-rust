@@ -2,7 +2,10 @@ use chrono::{DateTime, FixedOffset};
 
 use chrono::Utc;
 use std::time::Duration;
-use std::{convert::{TryFrom, TryInto}, str::FromStr};
+use std::{
+    convert::{TryFrom, TryInto},
+    str::FromStr,
+};
 
 /// Error cases which can be detected from [FcmResponse].
 ///
@@ -47,29 +50,21 @@ impl FcmResponseError {
         }
     }
 
-    fn get_error(
-        response_json: &serde_json::Map<String, serde_json::Value>,
-    ) -> Option<&str> {
+    fn get_error(response_json: &serde_json::Map<String, serde_json::Value>) -> Option<&str> {
         Self::get_error_using_api_reference(response_json)
             .or_else(|| Self::get_error_using_real_response(response_json))
     }
 
     /// Currently (2024-05-26) FCM API response JSON does not have
     /// this location for INVALID_ARGUMENT error.
-    fn get_error_using_api_reference(
-        response_json: &serde_json::Map<String, serde_json::Value>,
-    ) -> Option<&str> {
-        response_json
-            .get("error_code")
-            .and_then(|v| v.as_str())
+    fn get_error_using_api_reference(response_json: &serde_json::Map<String, serde_json::Value>) -> Option<&str> {
+        response_json.get("error_code").and_then(|v| v.as_str())
     }
 
     /// Current (2024-05-26) FCM API response JSON location for
     /// INVALID_ARGUMENT error and possibly for the other errors
     /// as well.
-    fn get_error_using_real_response(
-        response_json: &serde_json::Map<String, serde_json::Value>,
-    ) -> Option<&str> {
+    fn get_error_using_real_response(response_json: &serde_json::Map<String, serde_json::Value>) -> Option<&str> {
         response_json
             .get("error")
             .and_then(|v| v.get("status"))
@@ -110,18 +105,14 @@ impl RetryAfter {
         self.wait_time_with_time_provider(|| Utc::now().fixed_offset())
     }
 
-    fn wait_time_with_time_provider(
-        &self,
-        get_time: impl FnOnce() -> DateTime<FixedOffset>,
-    ) -> Duration {
+    fn wait_time_with_time_provider(&self, get_time: impl FnOnce() -> DateTime<FixedOffset>) -> Duration {
         match *self {
             RetryAfter::Delay(duration) => duration,
-            RetryAfter::DateTime(date_time) =>
-                (date_time - get_time())
-                    .to_std()
-                    // TimeDelta is negative when the date_time is in the
-                    // past. In that case wait time is 0.
-                    .unwrap_or(Duration::ZERO)
+            RetryAfter::DateTime(date_time) => (date_time - get_time())
+                .to_std()
+                // TimeDelta is negative when the date_time is in the
+                // past. In that case wait time is 0.
+                .unwrap_or(Duration::ZERO),
         }
     }
 }
@@ -133,10 +124,7 @@ impl FromStr for RetryAfter {
         s.parse::<u64>()
             .map(Duration::from_secs)
             .map(RetryAfter::Delay)
-            .or_else(
-                |_| DateTime::parse_from_rfc2822(s)
-                    .map(RetryAfter::DateTime)
-            )
+            .or_else(|_| DateTime::parse_from_rfc2822(s).map(RetryAfter::DateTime))
     }
 }
 
@@ -167,10 +155,7 @@ impl FcmResponse {
 
     /// If `None` then [crate::message::Message] is sent successfully.
     pub fn error(&self) -> Option<FcmResponseError> {
-        FcmResponseError::detect_from(
-            self.http_status_code,
-            &self.response_json_object
-        )
+        FcmResponseError::detect_from(self.http_status_code, &self.response_json_object)
     }
 
     pub fn http_status_code(&self) -> u16 {
@@ -236,36 +221,32 @@ pub enum RecomendedAction<'a> {
 impl RecomendedAction<'_> {
     fn analyze(response: &FcmResponse) -> Option<RecomendedAction> {
         let action = match response.error()? {
-            FcmResponseError::Unspecified |
-            FcmResponseError::Unknown { .. } => RecomendedAction::HandleUnknownError,
-                FcmResponseError::Unregistered => RecomendedAction::RemoveFcmAppToken,
-                FcmResponseError::InvalidArgument => RecomendedAction::FixMessageContent,
-                FcmResponseError::SenderIdMismatch =>
-                    RecomendedAction::CheckSenderIdEquality,
-                FcmResponseError::QuotaExceeded => {
-                    let wait_time = if let Some(ra) = response.retry_after() {
-                        RecomendedWaitTime::SpecificWaitTime(ra)
-                    } else {
-                        RecomendedWaitTime::InitialWaitTime(Duration::from_secs(60))
-                    };
+            FcmResponseError::Unspecified | FcmResponseError::Unknown { .. } => RecomendedAction::HandleUnknownError,
+            FcmResponseError::Unregistered => RecomendedAction::RemoveFcmAppToken,
+            FcmResponseError::InvalidArgument => RecomendedAction::FixMessageContent,
+            FcmResponseError::SenderIdMismatch => RecomendedAction::CheckSenderIdEquality,
+            FcmResponseError::QuotaExceeded => {
+                let wait_time = if let Some(ra) = response.retry_after() {
+                    RecomendedWaitTime::SpecificWaitTime(ra)
+                } else {
+                    RecomendedWaitTime::InitialWaitTime(Duration::from_secs(60))
+                };
 
-                    RecomendedAction::ReduceMessageRateAndRetry(wait_time)
-                }
-                FcmResponseError::Unavailable => {
-                    let wait_time = if let Some(ra) = response.retry_after() {
-                        RecomendedWaitTime::SpecificWaitTime(ra)
-                    } else {
-                        RecomendedWaitTime::InitialWaitTime(Duration::from_secs(10))
-                    };
+                RecomendedAction::ReduceMessageRateAndRetry(wait_time)
+            }
+            FcmResponseError::Unavailable => {
+                let wait_time = if let Some(ra) = response.retry_after() {
+                    RecomendedWaitTime::SpecificWaitTime(ra)
+                } else {
+                    RecomendedWaitTime::InitialWaitTime(Duration::from_secs(10))
+                };
 
-                    RecomendedAction::Retry(wait_time)
-                }
-                FcmResponseError::Internal =>
-                    RecomendedAction::Retry(
-                        RecomendedWaitTime::InitialWaitTime(Duration::from_secs(10))
-                    ),
-                FcmResponseError::ThirdPartyAuth =>
-                    RecomendedAction::CheckIosAndWebCredentials,
+                RecomendedAction::Retry(wait_time)
+            }
+            FcmResponseError::Internal => {
+                RecomendedAction::Retry(RecomendedWaitTime::InitialWaitTime(Duration::from_secs(10)))
+            }
+            FcmResponseError::ThirdPartyAuth => RecomendedAction::CheckIosAndWebCredentials,
         };
         Some(action)
     }
@@ -298,7 +279,10 @@ mod tests {
         let expected_wait_time = Duration::from_secs(1);
         let expected = RetryAfter::Delay(expected_wait_time);
         assert_eq!(expected, "1".parse().unwrap());
-        assert_eq!(expected_wait_time, expected.wait_time_with_time_provider(DateTime::default));
+        assert_eq!(
+            expected_wait_time,
+            expected.wait_time_with_time_provider(DateTime::default)
+        );
     }
 
     #[test]
@@ -307,15 +291,9 @@ mod tests {
         let date_time = DateTime::parse_from_rfc2822(date).unwrap();
         let retry_after = RetryAfter::from_str(date).unwrap();
 
-        assert_eq!(
-            RetryAfter::DateTime(date_time),
-            retry_after,
-        );
+        assert_eq!(RetryAfter::DateTime(date_time), retry_after,);
 
-        assert_eq!(
-            Duration::ZERO,
-            retry_after.wait_time_with_time_provider(|| date_time),
-        );
+        assert_eq!(Duration::ZERO, retry_after.wait_time_with_time_provider(|| date_time),);
     }
 
     #[test]

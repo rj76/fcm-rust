@@ -5,7 +5,7 @@ use yup_oauth2::hyper::client::HttpConnector;
 use yup_oauth2::hyper_rustls::HttpsConnector;
 use yup_oauth2::ServiceAccountAuthenticator;
 
-use super::{OauthClient, OauthClientInternal, OauthError, OauthErrorAccessTokenStatus, FIREBASE_OAUTH_SCOPE};
+const FIREBASE_OAUTH_SCOPE: &str = "https://www.googleapis.com/auth/firebase.messaging";
 
 #[derive(thiserror::Error, Debug)]
 pub enum YupOauth2Error {
@@ -21,10 +21,10 @@ pub enum YupOauth2Error {
     ProjectIdIsMissing,
 }
 
-impl OauthError for YupOauth2Error {}
-
-impl OauthErrorAccessTokenStatus for YupOauth2Error {
-    fn is_access_token_missing_even_if_server_requests_completed(&self) -> bool {
+impl YupOauth2Error {
+    /// If this is `true` then most likely current service account
+    /// key is invalid.
+    pub(crate) fn is_access_token_missing_even_if_server_requests_completed(&self) -> bool {
         matches!(
             self,
             YupOauth2Error::AccessTokenIsMissing |
@@ -36,17 +36,13 @@ impl OauthErrorAccessTokenStatus for YupOauth2Error {
     }
 }
 
-pub struct YupOauth2 {
+pub(crate) struct YupOauth2 {
     authenticator: Authenticator<HttpsConnector<HttpConnector>>,
     project_id: String,
 }
 
-impl OauthClient for YupOauth2 {
-    type Error = YupOauth2Error;
-}
-
-impl OauthClientInternal for YupOauth2 {
-    async fn create_with_key_file(
+impl YupOauth2 {
+    pub async fn create_with_key_file(
         service_account_key_path: PathBuf,
         token_cache_json_path: Option<PathBuf>,
     ) -> Result<Self, YupOauth2Error> {
@@ -55,7 +51,7 @@ impl OauthClientInternal for YupOauth2 {
         Self::create_with_string_key(file, token_cache_json_path).await
     }
 
-    async fn create_with_string_key(
+    pub async fn create_with_string_key(
         service_account_key_json_string: String,
         token_cache_json_path: Option<PathBuf>,
     ) -> Result<Self, YupOauth2Error> {
@@ -82,7 +78,7 @@ impl OauthClientInternal for YupOauth2 {
         })
     }
 
-    async fn get_access_token(&self) -> Result<String, YupOauth2Error> {
+    pub async fn get_access_token(&self) -> Result<String, YupOauth2Error> {
         let scopes = [FIREBASE_OAUTH_SCOPE];
         let access_token = self.authenticator.token(&scopes).await?;
         let access_token = access_token.token()
@@ -91,7 +87,7 @@ impl OauthClientInternal for YupOauth2 {
         Ok(access_token.to_string())
     }
 
-    fn get_project_id(&self) -> &str {
+    pub fn get_project_id(&self) -> &str {
         &self.project_id
     }
 }

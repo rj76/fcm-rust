@@ -1,4 +1,4 @@
-pub(crate) mod response;
+pub mod response;
 
 mod oauth;
 
@@ -9,9 +9,11 @@ use reqwest::header::RETRY_AFTER;
 
 use crate::client::response::FcmResponse;
 use crate::message::{Message, MessageWrapper};
-use crate::RetryAfter;
 
-use self::oauth::OauthClient;
+use self::{
+    oauth::OauthClient,
+    response::RetryAfter,
+};
 
 pub use self::oauth::OauthError;
 

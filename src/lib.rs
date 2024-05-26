@@ -54,5 +54,4 @@ pub(crate) mod apns;
 pub(crate) mod web;
 
 mod client;
-pub use crate::client::response::*;
 pub use crate::client::*;

@@ -1,6 +1,5 @@
 # fcm-rust
 [![Cargo tests](https://github.com/rj76/fcm-rust/actions/workflows/test.yml/badge.svg)](https://github.com/rj76/fcm-rust/actions/workflows/test.yml)
-[![Coverage Status](https://coveralls.io/repos/github/rj76/fcm-rust/badge.svg)](https://coveralls.io/github/rj76/fcm-rust)
 
 [//]: # ([![Crates.io Version]&#40;https://img.shields.io/crates/v/fcm.svg?style=flat-square&#41;)
 [//]: # ([![Crates.io Downloads]&#40;https://img.shields.io/crates/dv/fcm.svg?style=flat-square&#41;)

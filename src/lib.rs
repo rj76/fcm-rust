@@ -45,6 +45,8 @@
 //! }
 //! ```
 
+pub use yup_oauth2;
+
 pub mod message;
 pub(crate) mod notification;
 pub(crate) mod android;

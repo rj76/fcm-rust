@@ -1,6 +1,6 @@
 pub(crate) mod response;
 
-pub mod oauth_yup_oauth2;
+mod oauth_yup_oauth2;
 
 use std::path::{Path, PathBuf};
 use std::time::Duration;
@@ -11,14 +11,16 @@ use crate::client::response::FcmResponse;
 use crate::message::{Message, MessageWrapper};
 use crate::RetryAfter;
 
-use self::oauth_yup_oauth2::{YupOauth2, YupOauth2Error};
+use self::oauth_yup_oauth2::OauthClient;
+
+pub use self::oauth_yup_oauth2::OauthError;
 
 #[derive(thiserror::Error, Debug)]
 pub enum FcmClientError {
     #[error("Reqwest error: {0}")]
     Reqwest(#[from] reqwest::Error),
     #[error("OAuth error: {0}")]
-    Oauth(YupOauth2Error),
+    Oauth(OauthError),
     #[error("Dotenvy error: {0}")]
     Dotenvy(#[from] dotenvy::Error),
     #[error("Retry-After HTTP header value is not valid string")]
@@ -97,7 +99,7 @@ impl FcmClientBuilder {
 /// An async client for sending the notification payload.
 pub struct FcmClient {
     http_client: reqwest::Client,
-    oauth_client: YupOauth2,
+    oauth_client: OauthClient,
 }
 
 impl FcmClient {
@@ -117,7 +119,7 @@ impl FcmClient {
         let http_client = builder.build()?;
 
         let oauth_client = if let Some(key_json) = fcm_builder.service_account_key_json_string {
-            YupOauth2::create_with_string_key(
+            OauthClient::create_with_string_key(
                 key_json,
                 fcm_builder.token_cache_json_path,
             )
@@ -130,7 +132,7 @@ impl FcmClient {
                 dotenvy::var("GOOGLE_APPLICATION_CREDENTIALS")?.into()
             };
 
-            YupOauth2::create_with_key_file(
+            OauthClient::create_with_key_file(
                 service_account_key_path,
                 fcm_builder.token_cache_json_path,
             )

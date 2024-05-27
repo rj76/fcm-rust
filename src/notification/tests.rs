@@ -1,4 +1,4 @@
-use crate::Notification;
+use crate::message::Notification;
 use serde_json::json;
 
 #[test]
@@ -9,7 +9,7 @@ fn should_be_able_to_render_a_full_notification_to_json() {
         image: Some("https://my.image.com/test.jpg".to_string()),
     };
 
-    let payload = serde_json::to_string(&not.finalize()).unwrap();
+    let payload = serde_json::to_string(&not).unwrap();
 
     let expected_payload = json!({
         "title": "foo",

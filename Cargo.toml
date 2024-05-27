@@ -17,6 +17,7 @@ edition = "2018"
 
 [features]
 default = ["native-tls"]
+
 native-tls = ["reqwest/native-tls"]
 rustls = ["reqwest/rustls-tls"]
 vendored-tls = ["reqwest/native-tls-vendored"]
@@ -24,14 +25,13 @@ vendored-tls = ["reqwest/native-tls-vendored"]
 [dependencies]
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", features = ["preserve_order"] }
-erased-serde = "0.4.1"
-reqwest = {version = "0.11.0", features = ["json"], default-features=false}
+tokio = { version = "1", features = ["fs"] }
+reqwest = { version = "0.11", features = ["json"], default-features = false }
 chrono = "0.4"
-log = "0.4"
-gauth = "0.7.0"
-dotenv = "0.15.0"
+thiserror = "1"
+dotenvy = "0.15"
+yup-oauth2 = "9"
 
 [dev-dependencies]
-argparse = "0.2.1"
 tokio = { version = "1.0", features = ["rt-multi-thread", "macros"] }
-pretty_env_logger = "0.5.0"
+clap = { version = "4.5", features = ["cargo", "derive"] }

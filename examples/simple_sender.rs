@@ -1,57 +1,54 @@
-// cargo run --example simple_sender -- -t <device_token>
+// cargo run --example simple_sender -- --help
 
-use argparse::{ArgumentParser, Store};
+use std::path::PathBuf;
+
+use clap::Parser;
 use fcm::{
-    AndroidConfig, AndroidNotification, ApnsConfig, Client, FcmOptions, Message, Notification, Target, WebpushConfig,
+    message::{Message, Notification, Target},
+    FcmClient,
 };
 use serde_json::json;
 
+#[derive(Parser, Debug)]
+struct CliArgs {
+    #[arg(short = 't', long)]
+    device_token: String,
+    /// Set path to the service account key JSON file. Default is to use
+    /// path from the `GOOGLE_APPLICATION_CREDENTIALS` environment variable
+    /// (which can be also located in `.env` file).
+    #[arg(short = 'k', long, value_name = "FILE")]
+    service_account_key_path: Option<PathBuf>,
+}
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    pretty_env_logger::init();
-
-    let mut device_token = String::new();
-
-    {
-        let mut ap = ArgumentParser::new();
-        ap.set_description("A simple FCM notification sender");
-        ap.refer(&mut device_token)
-            .add_option(&["-t", "--device_token"], Store, "Device token");
-        ap.parse_args_or_exit();
-    }
-
-    let client = Client::new();
-
-    let data = json!({
-        "key": "value",
-    });
-
-    let builder = Message {
-        data: Some(data),
-        notification: Some(Notification {
-            title: Some("I'm high".to_string()),
-            body: Some(format!("it's {}", chrono::Utc::now())),
-            ..Default::default()
-        }),
-        target: Target::Token(device_token),
-        fcm_options: Some(FcmOptions {
-            analytics_label: "analytics_label".to_string(),
-        }),
-        android: Some(AndroidConfig {
-            priority: Some(fcm::AndroidMessagePriority::High),
-            notification: Some(AndroidNotification {
-                title: Some("I'm Android high".to_string()),
-                body: Some(format!("Hi Android, it's {}", chrono::Utc::now())),
-                ..Default::default()
-            }),
-            ..Default::default()
-        }),
-        apns: Some(ApnsConfig { ..Default::default() }),
-        webpush: Some(WebpushConfig { ..Default::default() }),
+    let args = CliArgs::parse();
+    let builder = FcmClient::builder();
+    let builder = if let Some(path) = args.service_account_key_path {
+        builder.service_account_key_json_path(path)
+    } else {
+        builder
     };
 
-    let response = client.send(builder).await?;
-    println!("Sent: {:?}", response);
+    let client = builder.build().await.unwrap();
+
+    let message = Message {
+        data: Some(json!({
+            "key": "value",
+        })),
+        notification: Some(Notification {
+            title: Some("Title".to_string()),
+            ..Default::default()
+        }),
+        target: Target::Token(args.device_token),
+        fcm_options: None,
+        android: None,
+        apns: None,
+        webpush: None,
+    };
+
+    let response = client.send(message).await?;
+    println!("Response: {:#?}", response);
 
     Ok(())
 }

@@ -1,172 +1,182 @@
-pub(crate) mod response;
+pub mod response;
 
-use crate::client::response::{ErrorReason, FcmError, FcmResponse, RetryAfter};
-use crate::{Message, MessageInternal};
-use gauth::serv_account::ServiceAccount;
+mod oauth;
+
+use std::path::{Path, PathBuf};
+use std::time::Duration;
+
 use reqwest::header::RETRY_AFTER;
-use reqwest::{Body, StatusCode};
-use serde::Serialize;
+
+use crate::client::response::FcmResponse;
+use crate::message::{Message, MessageWrapper};
+
+use self::{oauth::OauthClient, response::RetryAfter};
+
+pub use self::oauth::OauthError;
+
+#[derive(thiserror::Error, Debug)]
+pub enum FcmClientError {
+    #[error("Reqwest error: {0}")]
+    Reqwest(#[from] reqwest::Error),
+    #[error("OAuth error: {0}")]
+    Oauth(OauthError),
+    #[error("Dotenvy error: {0}")]
+    Dotenvy(#[from] dotenvy::Error),
+    #[error("Retry-After HTTP header value is not valid string")]
+    RetryAfterHttpHeaderIsNotString,
+    #[error("Retry-After HTTP header value is not valid, error: {error}, value: {value}")]
+    RetryAfterHttpHeaderInvalid { error: chrono::ParseError, value: String },
+}
+
+impl FcmClientError {
+    /// If this is `true` then most likely current service account
+    /// key is invalid.
+    pub fn is_access_token_missing_even_if_server_requests_completed(&self) -> bool {
+        match self {
+            FcmClientError::Oauth(error) => error.is_access_token_missing_even_if_server_requests_completed(),
+            _ => false,
+        }
+    }
+}
+
+#[derive(Debug, Default, Clone)]
+pub struct FcmClientBuilder {
+    service_account_key_json_string: Option<String>,
+    service_account_key_json_path: Option<PathBuf>,
+    token_cache_json_path: Option<PathBuf>,
+    fcm_request_timeout: Option<Duration>,
+}
+
+impl FcmClientBuilder {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Set path to the service account key JSON file. Default is to use
+    /// path from the `GOOGLE_APPLICATION_CREDENTIALS` environment variable
+    /// (which can be also located in `.env` file).
+    pub fn service_account_key_json_path(mut self, service_account_key_json_path: impl AsRef<Path>) -> Self {
+        self.service_account_key_json_path = Some(service_account_key_json_path.as_ref().to_path_buf());
+        self
+    }
+
+    /// Set timeout for FCM requests. Default is no timeout.
+    ///
+    /// If this is set the value should be at least 10 seconds as FCM
+    /// docs have that value as the minimum timeout.
+    /// <https://firebase.google.com/docs/cloud-messaging/scale-fcm#timeouts>
+    pub fn fcm_request_timeout(mut self, fcm_request_timeout: Duration) -> Self {
+        self.fcm_request_timeout = Some(fcm_request_timeout);
+        self
+    }
+
+    /// Set path to the token cache JSON file. Default is no token cache JSON file.
+    pub fn token_cache_json_path(mut self, token_cache_json_path: impl AsRef<Path>) -> Self {
+        self.token_cache_json_path = Some(token_cache_json_path.as_ref().to_path_buf());
+        self
+    }
+
+    /// Set service account key JSON. Default is to use
+    /// path from the `GOOGLE_APPLICATION_CREDENTIALS` environment variable
+    /// (which can be also located in `.env` file).
+    ///
+    /// This overrides `service_account_key_json_path`.
+    pub fn service_account_key_json_string(mut self, service_account_key_json_string: impl Into<String>) -> Self {
+        self.service_account_key_json_string = Some(service_account_key_json_string.into());
+        self
+    }
+
+    pub async fn build(self) -> Result<FcmClient, FcmClientError> {
+        FcmClient::new_from_builder(self).await
+    }
+}
 
 /// An async client for sending the notification payload.
-pub struct Client {
+pub struct FcmClient {
     http_client: reqwest::Client,
+    oauth_client: OauthClient,
 }
 
-impl Default for Client {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-// will be used to wrap the message in a "message" field
-#[derive(Serialize)]
-struct MessageWrapper<'a> {
-    #[serde(rename = "message")]
-    message: &'a MessageInternal,
-}
-
-impl MessageWrapper<'_> {
-    fn new(message: &MessageInternal) -> MessageWrapper {
-        MessageWrapper { message }
-    }
-}
-
-impl Client {
-    /// Get a new instance of Client.
-    pub fn new() -> Client {
-        let http_client = reqwest::ClientBuilder::new()
-            .pool_max_idle_per_host(usize::MAX)
-            .build()
-            .unwrap();
-
-        Client { http_client }
+impl FcmClient {
+    pub fn builder() -> FcmClientBuilder {
+        FcmClientBuilder::new()
     }
 
-    fn get_service_key_file_name(&self) -> Result<String, String> {
-        let key_path = match dotenv::var("GOOGLE_APPLICATION_CREDENTIALS") {
-            Ok(key_path) => key_path,
-            Err(err) => return Err(err.to_string()),
+    async fn new_from_builder(fcm_builder: FcmClientBuilder) -> Result<Self, FcmClientError> {
+        let builder = reqwest::ClientBuilder::new();
+        let builder = if let Some(timeout) = fcm_builder.fcm_request_timeout {
+            builder.timeout(timeout)
+        } else {
+            builder
+        };
+        let http_client = builder.build()?;
+
+        let oauth_client = if let Some(key_json) = fcm_builder.service_account_key_json_string {
+            OauthClient::create_with_string_key(key_json, fcm_builder.token_cache_json_path)
+                .await
+                .map_err(FcmClientError::Oauth)?
+        } else {
+            let service_account_key_path = if let Some(path) = fcm_builder.service_account_key_json_path {
+                path
+            } else {
+                dotenvy::var("GOOGLE_APPLICATION_CREDENTIALS")?.into()
+            };
+
+            OauthClient::create_with_key_file(service_account_key_path, fcm_builder.token_cache_json_path)
+                .await
+                .map_err(FcmClientError::Oauth)?
         };
 
-        Ok(key_path)
+        Ok(FcmClient {
+            http_client,
+            oauth_client,
+        })
     }
 
-    fn read_service_key_file(&self) -> Result<String, String> {
-        let key_path = self.get_service_key_file_name()?;
-
-        let private_key_content = match std::fs::read(key_path) {
-            Ok(content) => content,
-            Err(err) => return Err(err.to_string()),
-        };
-
-        Ok(String::from_utf8(private_key_content).unwrap())
-    }
-
-    fn read_service_key_file_json(&self) -> Result<serde_json::Value, String> {
-        let file_content = match self.read_service_key_file() {
-            Ok(content) => content,
-            Err(err) => return Err(err),
-        };
-
-        let json_content: serde_json::Value = match serde_json::from_str(&file_content) {
-            Ok(json) => json,
-            Err(err) => return Err(err.to_string()),
-        };
-
-        Ok(json_content)
-    }
-
-    fn get_project_id(&self) -> Result<String, String> {
-        let json_content = match self.read_service_key_file_json() {
-            Ok(json) => json,
-            Err(err) => return Err(err),
-        };
-
-        let project_id = match json_content["project_id"].as_str() {
-            Some(project_id) => project_id,
-            None => return Err("could not get project_id".to_string()),
-        };
-
-        Ok(project_id.to_string())
-    }
-
-    async fn get_auth_token(&self) -> Result<String, String> {
-        let tkn = match self.access_token().await {
-            Ok(tkn) => tkn,
-            Err(_) => return Err("could not get access token".to_string()),
-        };
-
-        Ok(tkn)
-    }
-
-    async fn access_token(&self) -> Result<String, String> {
-        let scopes = vec!["https://www.googleapis.com/auth/firebase.messaging"];
-        let key_path = self.get_service_key_file_name()?;
-
-        let mut service_account = ServiceAccount::from_file(&key_path, scopes);
-        let access_token = match service_account.access_token().await {
-            Ok(access_token) => access_token,
-            Err(err) => return Err(err.to_string()),
-        };
-
-        let token_no_bearer = access_token.split(char::is_whitespace).collect::<Vec<&str>>()[1];
-
-        Ok(token_no_bearer.to_string())
-    }
-
-    pub async fn send(&self, message: Message) -> Result<FcmResponse, FcmError> {
-        let fin = message.finalize();
-        let wrapper = MessageWrapper::new(&fin);
-        let payload = serde_json::to_vec(&wrapper).unwrap();
-
-        let project_id = match self.get_project_id() {
-            Ok(project_id) => project_id,
-            Err(err) => return Err(FcmError::ProjectIdError(err)),
-        };
-
-        let auth_token = match self.get_auth_token().await {
-            Ok(tkn) => tkn,
-            Err(err) => return Err(FcmError::ProjectIdError(err)),
-        };
+    pub async fn send(&self, message: impl AsRef<Message>) -> Result<FcmResponse, FcmClientError> {
+        let access_token = self
+            .oauth_client
+            .get_access_token()
+            .await
+            .map_err(FcmClientError::Oauth)?;
 
         // https://firebase.google.com/docs/reference/fcm/rest/v1/projects.messages/send
-        let url = format!("https://fcm.googleapis.com/v1/projects/{}/messages:send", project_id);
+        let url = format!(
+            "https://fcm.googleapis.com/v1/projects/{}/messages:send",
+            self.oauth_client.get_project_id()
+        );
 
         let request = self
             .http_client
             .post(&url)
-            .header("Content-Type", "application/json")
-            .bearer_auth(auth_token)
-            .body(Body::from(payload))
+            .bearer_auth(access_token)
+            .json(&MessageWrapper::new(message.as_ref()))
             .build()?;
 
         let response = self.http_client.execute(request).await?;
+        let retry_after = response.headers().get(RETRY_AFTER);
+        let retry_after = if let Some(header_value) = retry_after {
+            let header_str = header_value
+                .to_str()
+                .map_err(|_| FcmClientError::RetryAfterHttpHeaderIsNotString)?;
+            let value =
+                header_str
+                    .parse::<RetryAfter>()
+                    .map_err(|error| FcmClientError::RetryAfterHttpHeaderInvalid {
+                        error,
+                        value: header_str.to_string(),
+                    })?;
+            Some(value)
+        } else {
+            None
+        };
+        let http_status_code = response.status().as_u16();
+        // Return if I/O error occurs
+        let response_body = response.bytes().await?;
+        let response_json_object = serde_json::from_slice::<serde_json::Map<String, serde_json::Value>>(&response_body)
+            .ok()
+            .unwrap_or_default();
 
-        let response_status = response.status();
-
-        let retry_after = response
-            .headers()
-            .get(RETRY_AFTER)
-            .and_then(|ra| ra.to_str().ok())
-            .and_then(|ra| ra.parse::<RetryAfter>().ok());
-
-        match response_status {
-            StatusCode::OK => {
-                let fcm_response: FcmResponse = response.json().await.unwrap();
-
-                match fcm_response.error {
-                    Some(ErrorReason::Unavailable) => Err(FcmError::ServerError(retry_after)),
-                    Some(ErrorReason::InternalServerError) => Err(FcmError::ServerError(retry_after)),
-                    _ => Ok(fcm_response),
-                }
-            }
-            StatusCode::UNAUTHORIZED => Err(FcmError::Unauthorized),
-            StatusCode::BAD_REQUEST => {
-                let body = response.text().await.unwrap();
-                Err(FcmError::InvalidMessage(format!("Bad Request ({body}")))
-            }
-            status if status.is_server_error() => Err(FcmError::ServerError(retry_after)),
-            _ => Err(FcmError::InvalidMessage("Unknown Error".to_string())),
-        }
+        Ok(FcmResponse::new(http_status_code, response_json_object, retry_after))
     }
 }

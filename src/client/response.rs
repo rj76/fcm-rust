@@ -95,13 +95,29 @@ pub enum ErrorReason {
 
 #[derive(Deserialize, Debug)]
 pub struct Response {
-    pub message_id: Option<u64>,
-    pub error: Option<ErrorReason>,
-    pub multicast_id: Option<i64>,
-    pub success: Option<u64>,
-    pub failure: Option<u64>,
-    pub canonical_ids: Option<u64>,
-    pub results: Option<Vec<MessageResult>>,
+    /// The identifier of the message sent, in the format of projects/*/messages/{message_id}.
+    pub name: String,
+}
+
+#[derive(Deserialize, Debug)]
+pub struct Error404Response {
+    pub error: Error404Error,
+}
+
+#[derive(Deserialize, Debug)]
+pub struct Error404Error {
+    pub details: Vec<Error404ErrorDetail>,
+}
+
+pub const TYPE_FCM_ERROR: &str = "type.googleapis.com/google.firebase.fcm.v1.FcmError";
+pub const ERROR_404_CODE_UNREGISTERED: &str = "UNREGISTERED";
+
+#[derive(Deserialize, Debug)]
+pub struct Error404ErrorDetail {
+    #[serde(rename = "@type")]
+    pub typ: String,
+    #[serde(rename = "errorCode")]
+    pub error_code: String,
 }
 
 #[derive(Deserialize, Debug)]
@@ -121,12 +137,20 @@ pub enum SendError {
     #[error("Error sending message: {0}")]
     HttpRequest(reqwest::Error),
 
-    #[error("Unknown response")]
+    #[error("Unknown response: status:{status}, body:{body:?}")]
     UnknownHttpResponse {
         status: reqwest::StatusCode,
         body: reqwest::Result<String>,
-    }
+    },
 
+    #[error("Failed to parse response: {0}")]
+    ResponseParse(reqwest::Error),
+
+    #[error("Unknown 404 error: {0:?}")]
+    UnknownError404Response(Error404Response),
+
+    #[error("Client unregistered")]
+    Unregistered,
     // TODO retry after error
 
     // TODO error variant for invalid authentication
@@ -192,43 +216,6 @@ impl FromStr for RetryAfter {
 mod tests {
     use super::*;
     use chrono::{DateTime, Duration};
-    use serde_json::json;
-
-    #[test]
-    fn test_some_errors() {
-        let errors = vec![
-            ("MissingRegistration", ErrorReason::MissingRegistration),
-            ("InvalidRegistration", ErrorReason::InvalidRegistration),
-            ("NotRegistered", ErrorReason::NotRegistered),
-            ("InvalidPackageName", ErrorReason::InvalidPackageName),
-            ("MismatchSenderId", ErrorReason::MismatchSenderId),
-            ("InvalidParameters", ErrorReason::InvalidParameters),
-            ("MessageTooBig", ErrorReason::MessageTooBig),
-            ("InvalidDataKey", ErrorReason::InvalidDataKey),
-            ("InvalidTtl", ErrorReason::InvalidTtl),
-            ("Unavailable", ErrorReason::Unavailable),
-            ("InternalServerError", ErrorReason::InternalServerError),
-            ("DeviceMessageRateExceeded", ErrorReason::DeviceMessageRateExceeded),
-            ("TopicsMessageRateExceeded", ErrorReason::TopicsMessageRateExceeded),
-            ("InvalidApnsCredential", ErrorReason::InvalidApnsCredential),
-        ];
-
-        for (error_str, error_enum) in errors.into_iter() {
-            let response_data = json!({
-                "error": error_str,
-                "results": [
-                    {"error": error_str}
-                ]
-            });
-
-            let response_string = serde_json::to_string(&response_data).unwrap();
-            let fcm_response = serde_json::from_str::<Response>(&response_string).unwrap();
-
-            assert_eq!(Some(error_enum), fcm_response.results.unwrap()[0].error);
-
-            assert_eq!(Some(error_enum), fcm_response.error)
-        }
-    }
 
     #[test]
     fn test_retry_after_from_seconds() {

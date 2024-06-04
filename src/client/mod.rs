@@ -1,7 +1,10 @@
 pub(crate) mod response;
 
 use crate::client::response::Response;
-use crate::{ClientBuildError, Message, MessageInternal, SendError};
+use crate::{
+    ClientBuildError, Error404Response, Message, MessageInternal, SendError, ERROR_404_CODE_UNREGISTERED,
+    TYPE_FCM_ERROR,
+};
 pub use gauth;
 use gauth::serv_account::{ServiceAccount, ServiceAccountBuilder, ServiceAccountKey};
 use reqwest::{Client as HttpClient, StatusCode};
@@ -89,14 +92,18 @@ impl Client {
         //     .and_then(|ra| ra.parse::<RetryAfter>().ok());
 
         match response_status {
-            StatusCode::OK => {
-                let fcm_response = response.json::<Response>().await.unwrap();
-                // match fcm_response.error {
-                //     // Some(ErrorReason::Unavailable) => Err(Error::ServerError(retry_after)),
-                //     // Some(ErrorReason::InternalServerError) => Err(Error::ServerError(retry_after)),
-                //     _ => Ok(fcm_response),
-                // }
-                Ok(fcm_response)
+            StatusCode::OK => response.json::<Response>().await.map_err(SendError::ResponseParse),
+            StatusCode::NOT_FOUND => {
+                let response = response
+                    .json::<Error404Response>()
+                    .await
+                    .map_err(SendError::ResponseParse)?;
+                for detail in response.error.details.iter() {
+                    if detail.typ == TYPE_FCM_ERROR && detail.error_code == ERROR_404_CODE_UNREGISTERED {
+                        return Err(SendError::Unregistered);
+                    }
+                }
+                Err(SendError::UnknownError404Response(response))
             }
             // StatusCode::UNAUTHORIZED => Err(Error::Unauthorized),
             // StatusCode::BAD_REQUEST => {

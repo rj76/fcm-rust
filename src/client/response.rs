@@ -151,6 +151,10 @@ pub enum SendError {
 
     #[error("Client unregistered")]
     Unregistered,
+
+    #[error("Not allowed to call this API")]
+    Forbidden,
+
     // TODO retry after error
 
     // TODO error variant for invalid authentication

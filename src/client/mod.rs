@@ -105,6 +105,7 @@ impl Client {
                 }
                 Err(SendError::UnknownError404Response(response))
             }
+            StatusCode::FORBIDDEN => Err(SendError::Forbidden),
             // StatusCode::UNAUTHORIZED => Err(Error::Unauthorized),
             // StatusCode::BAD_REQUEST => {
             //     let body = response.text().await.unwrap();

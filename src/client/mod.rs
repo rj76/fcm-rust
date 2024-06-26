@@ -101,7 +101,7 @@ impl FcmClientBuilder {
 pub struct FcmClient {
     http_client: reqwest::Client,
     oauth_client: OauthClient,
-    dry_run: bool,
+    pub dry_run: bool,
 }
 
 impl FcmClient {

@@ -82,13 +82,22 @@ impl AsRef<Message> for Message {
 }
 
 /// Wrap the message in a "message" field
+fn is_validate_only_default(b: &bool) -> bool {
+    *b == false
+}
+
 #[derive(Serialize)]
 pub(crate) struct MessageWrapper<'a> {
+    #[serde(skip_serializing_if = "is_validate_only_default")]
+    validate_only: bool,
     message: &'a Message,
 }
 
 impl MessageWrapper<'_> {
-    pub fn new(message: &Message) -> MessageWrapper {
-        MessageWrapper { message }
+    pub fn new(message: &Message, dry_run: bool) -> MessageWrapper {
+        MessageWrapper {
+            validate_only: dry_run,
+            message,
+        }
     }
 }

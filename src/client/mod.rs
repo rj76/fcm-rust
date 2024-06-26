@@ -45,6 +45,7 @@ pub struct FcmClientBuilder {
     service_account_key_json_path: Option<PathBuf>,
     token_cache_json_path: Option<PathBuf>,
     fcm_request_timeout: Option<Duration>,
+    dry_run: Option<bool>,
 }
 
 impl FcmClientBuilder {
@@ -86,6 +87,11 @@ impl FcmClientBuilder {
         self
     }
 
+    pub fn dry_run(mut self, dry_run: bool) -> Self {
+        self.dry_run = Some(dry_run);
+        self
+    }
+
     pub async fn build(self) -> Result<FcmClient, FcmClientError> {
         FcmClient::new_from_builder(self).await
     }
@@ -95,6 +101,7 @@ impl FcmClientBuilder {
 pub struct FcmClient {
     http_client: reqwest::Client,
     oauth_client: OauthClient,
+    dry_run: bool,
 }
 
 impl FcmClient {
@@ -130,6 +137,7 @@ impl FcmClient {
         Ok(FcmClient {
             http_client,
             oauth_client,
+            dry_run: fcm_builder.dry_run.unwrap_or(false),
         })
     }
 
@@ -150,7 +158,7 @@ impl FcmClient {
             .http_client
             .post(&url)
             .bearer_auth(access_token)
-            .json(&MessageWrapper::new(message.as_ref()))
+            .json(&MessageWrapper::new(message.as_ref(), self.dry_run))
             .build()?;
 
         let response = self.http_client.execute(request).await?;

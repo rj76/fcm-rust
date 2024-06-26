@@ -84,11 +84,15 @@ impl AsRef<Message> for Message {
 /// Wrap the message in a "message" field
 #[derive(Serialize)]
 pub(crate) struct MessageWrapper<'a> {
+    validate_only: bool,
     message: &'a Message,
 }
 
 impl MessageWrapper<'_> {
-    pub fn new(message: &Message) -> MessageWrapper {
-        MessageWrapper { message }
+    pub fn new(message: &Message, dry_run: bool) -> MessageWrapper {
+        MessageWrapper { 
+            validate_only: dry_run,
+            message
+        }
     }
 }

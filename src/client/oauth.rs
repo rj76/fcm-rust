@@ -1,8 +1,6 @@
 use std::path::PathBuf;
 
 use yup_oauth2::authenticator::{Authenticator, DefaultHyperClient, HyperClientBuilder};
-use yup_oauth2::hyper::client::HttpConnector;
-use yup_oauth2::hyper_rustls::HttpsConnector;
 use yup_oauth2::ServiceAccountAuthenticator;
 
 const FIREBASE_OAUTH_SCOPE: &str = "https://www.googleapis.com/auth/firebase.messaging";
@@ -34,7 +32,7 @@ impl OauthError {
 }
 
 pub(crate) struct OauthClient {
-    authenticator: Authenticator<HttpsConnector<HttpConnector>>,
+    authenticator: Authenticator<<DefaultHyperClient as HyperClientBuilder>::Connector>,
     project_id: String,
 }
 
@@ -55,8 +53,7 @@ impl OauthClient {
     ) -> Result<Self, OauthError> {
         let key = yup_oauth2::parse_service_account_key(service_account_key_json_string)
             .map_err(OauthError::ServiceAccountKeyReadingFailed)?;
-        let oauth_client = DefaultHyperClient.build_hyper_client().map_err(OauthError::Oauth)?;
-        let builder = ServiceAccountAuthenticator::with_client(key.clone(), oauth_client);
+        let builder = ServiceAccountAuthenticator::builder(key.clone());
         let builder = if let Some(path) = token_cache_json_path {
             builder.persist_tokens_to_disk(path)
         } else {

@@ -81,6 +81,7 @@ impl AsRef<Message> for Message {
     }
 }
 
+#[allow(clippy::bool_comparison)]
 fn is_validate_only_default(b: &bool) -> bool {
     *b == false
 }

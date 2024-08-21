@@ -81,11 +81,13 @@ impl AsRef<Message> for Message {
     }
 }
 
-/// Wrap the message in a "message" field
+#[allow(clippy::bool_comparison)]
 fn is_validate_only_default(b: &bool) -> bool {
     *b == false
 }
 
+/// Data for FCM send API request body JSON
+/// <https://firebase.google.com/docs/reference/fcm/rest/v1/projects.messages/send?authuser=0#request-body>
 #[derive(Serialize)]
 pub(crate) struct MessageWrapper<'a> {
     #[serde(skip_serializing_if = "is_validate_only_default")]

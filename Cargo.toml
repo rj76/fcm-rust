@@ -21,6 +21,7 @@ default = ["native-tls"]
 native-tls = ["reqwest/native-tls", "yup-oauth2/hyper-tls"]
 native-tls-vendored = ["reqwest/native-tls-vendored", "yup-oauth2/hyper-tls"]
 rustls-tls = ["reqwest/rustls-tls", "yup-oauth2/hyper-rustls"]
+rustls-tls-native-roots = ["reqwest/rustls-tls-native-roots", "yup-oauth2/hyper-rustls"]
 
 [dependencies]
 serde = { version = "1", features = ["derive"] }
